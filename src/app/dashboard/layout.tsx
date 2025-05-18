@@ -17,8 +17,9 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Loader2, LayoutDashboard, Briefcase, UserCircle } from 'lucide-react';
+import { Loader2, LayoutDashboard, Briefcase, UserCircle, Mail } from 'lucide-react';
 import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function DashboardLayout({
   children,
@@ -31,15 +32,18 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isFirebaseReady && !loading) {
+      // Firebase not ready, and not just initial loading phase
       router.push('/');
       return;
     }
     if (isFirebaseReady && !loading && !user) {
+      // Firebase is ready, loading finished, but no user
       router.push('/');
     }
   }, [user, loading, router, isFirebaseReady]);
 
   if (loading || !isFirebaseReady || (isFirebaseReady && !user && !pathname.startsWith('/dashboard') && pathname !== '/')) {
+    // This handles initial load, firebase not ready, or if user is somehow null while not on login page
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -49,7 +53,8 @@ export default function DashboardLayout({
   }
   
   if (!user) {
-     // Esto es un fallback, el useEffect debería redirigir.
+     // This is a fallback, useEffect should have redirected.
+    // Helps prevent rendering children if user is truly null after checks.
     return null;
   }
 
@@ -59,17 +64,37 @@ export default function DashboardLayout({
     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: UserCircle },
   ];
 
+  const userInitials = user?.displayName ? user.displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : <UserCircle size={20}/>;
+
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen flex-col">
-        {/* Navbar ya está en RootLayout, no se necesita aquí */}
-        <div className="flex flex-1 pt-16"> {/* pt-16 para compensar la altura de la Navbar fija en RootLayout */}
+        {/* Navbar is in RootLayout, not needed here */}
+        <div className="flex flex-1 pt-16"> {/* pt-16 for Navbar fixed in RootLayout */}
           <Sidebar 
-            className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30" 
-            collapsible="none" 
+            className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30 bg-card" 
+            collapsible="none" // Always expanded on desktop
           >
-            <SidebarHeader>
-               <Button variant="ghost" size="icon" className="md:hidden" asChild>
+            <SidebarHeader className="p-4 border-b">
+               <div className="flex items-center gap-3 mb-3">
+                <Avatar className="h-12 w-12 border-2 border-primary">
+                  {user.photoURL ? (
+                    <AvatarImage src={user.photoURL} alt={user.displayName || 'Usuario'} />
+                  ) : null }
+                  <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col overflow-hidden">
+                  <p className="text-sm font-semibold text-foreground truncate" title={user.displayName || undefined}>
+                    {user.displayName || 'Usuario'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate" title={user.email || undefined}>
+                    {user.email || 'No email'}
+                  </p>
+                </div>
+              </div>
+               <Button variant="ghost" size="icon" className="md:hidden absolute top-3 right-3" asChild>
                  <SidebarTrigger />
                </Button>
             </SidebarHeader>
@@ -90,7 +115,7 @@ export default function DashboardLayout({
               </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
-              {/* Podríamos añadir info del usuario o un botón de cerrar sesión específico del sidebar */}
+              {/* Future: Quick actions or compact user info */}
             </SidebarFooter>
           </Sidebar>
           <main className="flex-1 flex-col bg-background p-4 md:p-6 lg:p-8 overflow-auto ml-0 md:ml-[16rem] transition-all duration-200 ease-linear">
@@ -101,4 +126,3 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
-
