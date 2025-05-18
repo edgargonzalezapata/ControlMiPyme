@@ -9,9 +9,8 @@ import { Briefcase, Loader2, Edit, Trash2, ShieldAlert } from 'lucide-react';
 import { useAuthContext } from '@/context/AuthProvider';
 import type { Company } from '@/lib/types';
 import CreateCompanyForm from './_components/CreateCompanyForm';
-import { collection, query, where, getDocs, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Unsubscribe, doc, deleteDoc as firebaseDeleteDoc } from 'firebase/firestore'; // Renombrado deleteDoc
 import { db } from '@/lib/firestore';
-import { deleteCompany } from '@/lib/companyService'; // Importar deleteCompany
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -24,12 +23,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+// La Server Action deleteCompany de companyService ya no se usará directamente desde aquí para eliminar.
 
 export default function EmpresasDashboardPage() {
   const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null); // companyId being deleted
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function EmpresasDashboardPage() {
         const q = query(collection(db, 'companies'), where(`members.${user.uid}`, 'in', ['admin', 'viewer']));
         
         unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const userCompanies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+          const userCompanies = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Company));
           setCompanies(userCompanies);
           setIsLoadingCompanies(false);
         }, (error) => {
@@ -64,12 +64,15 @@ export default function EmpresasDashboardPage() {
         setIsLoadingCompanies(false);
       }
     } else if (isFirebaseReady && !authLoading && !user) {
+      // No user logged in, clear companies and stop loading
       setCompanies([]);
       setIsLoadingCompanies(false);
     } else if (!isFirebaseReady || authLoading) {
+      // Auth is still loading or Firebase not ready
       setIsLoadingCompanies(true);
     }
 
+    // Cleanup listener on unmount
     return () => {
       if (unsubscribe) {
         unsubscribe();
@@ -77,20 +80,39 @@ export default function EmpresasDashboardPage() {
     };
   }, [user, authLoading, isFirebaseReady, toast]);
 
-  const handleDeleteCompany = async (companyId: string, companyName: string) => {
-    setIsDeleting(companyId);
-    const result = await deleteCompany(companyId);
-    if ('success' in result) {
-      toast({ title: "Empresa Eliminada", description: `La empresa "${companyName}" ha sido eliminada.` });
-      // La lista se actualizará automáticamente por el listener onSnapshot
-    } else {
-      toast({ title: "Error al Eliminar", description: result.error, variant: "destructive" });
+  const handleDeleteCompany = async (companyToDelete: Company) => {
+    if (!user || !db) {
+      toast({ title: "Error", description: "No autenticado o base de datos no disponible.", variant: "destructive" });
+      return;
     }
-    setIsDeleting(null);
+
+    if (companyToDelete.ownerUid !== user.uid) {
+      toast({ title: "Acción no permitida", description: "Solo el propietario puede eliminar la empresa.", variant: "destructive" });
+      return;
+    }
+
+    setIsDeleting(companyToDelete.id);
+    try {
+      const companyDocRef = doc(db, 'companies', companyToDelete.id);
+      await firebaseDeleteDoc(companyDocRef); // Usar deleteDoc del SDK de cliente
+      toast({ title: "Empresa Eliminada", description: `La empresa "${companyToDelete.name}" ha sido eliminada.` });
+      // La lista se actualizará automáticamente gracias a onSnapshot.
+    } catch (error: any) {
+      console.error("Error deleting company from client:", error);
+      let errorMessage = "No se pudo eliminar la empresa.";
+      if (error.code === 'permission-denied') {
+        errorMessage = "Error de permisos al eliminar la empresa. Asegúrate de ser el propietario y que las reglas de Firestore lo permitan.";
+      } else if (error.message) {
+        errorMessage += ` Detalles: ${error.message}`;
+      }
+      toast({ title: "Error al Eliminar", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
 
-  if (authLoading || (!isFirebaseReady && isLoadingCompanies)) {
+  if (authLoading || (!isFirebaseReady && isLoadingCompanies)) { // Muestra loader si auth carga o si firebase no está listo Y las compañías cargan
     return (
       <div className="container mx-auto flex justify-center items-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -99,6 +121,7 @@ export default function EmpresasDashboardPage() {
     );
   }
   
+  // Si Firebase está listo pero las compañías aún están cargando (y no es por authLoading)
   if (isLoadingCompanies && isFirebaseReady) {
      return (
       <div className="container mx-auto flex justify-center items-center py-10">
@@ -155,7 +178,7 @@ export default function EmpresasDashboardPage() {
                     <Edit className="mr-2 h-3 w-3" /> Editar
                   </Link>
                 </Button>
-                {company.ownerUid === user?.uid && (
+                {company.ownerUid === user?.uid && ( // Solo el propietario puede ver el botón de eliminar
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" disabled={isDeleting === company.id}>
@@ -174,7 +197,7 @@ export default function EmpresasDashboardPage() {
                       <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting === company.id}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => handleDeleteCompany(company.id, company.name)}
+                          onClick={() => handleDeleteCompany(company)} // Pasar el objeto company completo
                           disabled={isDeleting === company.id}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
@@ -192,5 +215,4 @@ export default function EmpresasDashboardPage() {
     </div>
   );
 }
-
     
