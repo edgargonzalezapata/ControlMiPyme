@@ -1,14 +1,16 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Briefcase, PlusCircle, Loader2 } from 'lucide-react';
+import { Briefcase, Loader2 } from 'lucide-react';
 import { useAuthContext } from '@/context/AuthProvider';
-import { getUserCompanies } from '@/lib/companyService';
 import type { Company } from '@/lib/types';
 import CreateCompanyForm from './_components/CreateCompanyForm';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firestore'; // Import db instance
 
 export default function EmpresasDashboardPage() {
   const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
@@ -19,11 +21,20 @@ export default function EmpresasDashboardPage() {
     if (isFirebaseReady && !authLoading && user?.uid) {
       const fetchCompanies = async () => {
         setIsLoadingCompanies(true);
+        if (!db) {
+          console.error("Firestore DB is not available.");
+          setCompanies([]);
+          setIsLoadingCompanies(false);
+          return;
+        }
         try {
-          const userCompanies = await getUserCompanies(user.uid);
+          // Query companies where the user.uid is a key in the members map
+          const q = query(collection(db, 'companies'), where(`members.${user.uid}`, 'in', ['admin', 'viewer']));
+          const querySnapshot = await getDocs(q);
+          const userCompanies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
           setCompanies(userCompanies);
         } catch (error) {
-          console.error("Failed to fetch companies:", error);
+          console.error("Failed to fetch companies from client:", error);
           setCompanies([]); // Set to empty array on error
         } finally {
           setIsLoadingCompanies(false);
@@ -31,16 +42,11 @@ export default function EmpresasDashboardPage() {
       };
       fetchCompanies();
     } else if (isFirebaseReady && !authLoading && !user) {
-      // No user logged in, or UID not available yet
       setCompanies([]);
       setIsLoadingCompanies(false);
+    } else if (!isFirebaseReady || authLoading) {
+      setIsLoadingCompanies(true);
     }
-    // Explicitly set loading to false if firebase isn't ready or auth is still loading after initial check
-    // This prevents indefinite loading if the initial conditions aren't met.
-    else if (!isFirebaseReady || authLoading) {
-        setIsLoadingCompanies(true); // Keep loading if auth or firebase is not ready
-    }
-
   }, [user, authLoading, isFirebaseReady]);
 
   if (authLoading || (!isFirebaseReady && isLoadingCompanies)) {
@@ -61,7 +67,6 @@ export default function EmpresasDashboardPage() {
     );
   }
 
-
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -69,7 +74,7 @@ export default function EmpresasDashboardPage() {
         <CreateCompanyForm />
       </div>
 
-      {companies.length === 0 ? (
+      {companies.length === 0 && !isLoadingCompanies ? (
         <Card className="text-center py-12">
           <CardHeader>
             <Briefcase className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
@@ -92,7 +97,6 @@ export default function EmpresasDashboardPage() {
                   {company.name}
                 </CardTitle>
                 <CardDescription>
-                  {/* Use user.uid from AuthContext */}
                   {company.ownerUid === user?.uid ? "Propietario" : `Miembro (${company.members[user?.uid || ''] || 'lector'})`}
                 </CardDescription>
               </CardHeader>
