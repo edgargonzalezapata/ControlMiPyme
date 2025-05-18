@@ -37,7 +37,7 @@ export async function createBankAccount(companyId: string, accountData: Omit<Ban
     const docRef = await addDoc(collection(db, 'bankAccounts'), newAccountData);
     revalidatePath(`/dashboard/cuentas`); // Revalidate the new global accounts page
     return { id: docRef.id };
-  } catch (error)
+  } catch (error) { // Added missing opening brace here
     console.error("Error creating bank account:", error);
     return { error: "No se pudo crear la cuenta bancaria." };
   }
