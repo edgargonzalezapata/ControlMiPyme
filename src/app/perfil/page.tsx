@@ -1,3 +1,4 @@
+
 "use client";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -5,7 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, UserCheck2, ShieldX, ShieldAlert } from 'lucide-react'; 
+import { Loader2, Mail, UserCheck2, ShieldX, ShieldAlert, ShieldCheck } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
@@ -119,3 +120,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
