@@ -25,8 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es"> {/* Changed lang to "es" */}
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}> {/* Added font-sans for Geist */}
+    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+      {/*
+        The <body> tag no longer needs font-related classes as they are now on the <html> tag.
+        The globals.css file already applies background, foreground, and the primary font-family (var(--font-geist-sans)) to the body element.
+      */}
+      <body>
         <div className="flex min-h-screen flex-col">
           <Navbar />
           <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
