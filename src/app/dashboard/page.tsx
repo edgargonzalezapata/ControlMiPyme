@@ -1,6 +1,7 @@
 
 "use client";
 import Link from 'next/link';
+import { useEffect, useState } from 'react'; // Added useState and useEffect here
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, UserCircle, ArrowRight, Building, Banknote, FileText, Users, Settings, Loader2 } from 'lucide-react';
