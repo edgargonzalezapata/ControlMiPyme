@@ -1,3 +1,4 @@
+
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { createCompany } from '@/lib/companyService';
 import { useToast } from '@/hooks/use-toast';
-import { useAuthContext } from '@/context/AuthProvider'; // Importar useAuthContext
+import { useAuthContext } from '@/context/AuthProvider';
+import { useActiveCompany } from '@/context/ActiveCompanyProvider'; // Import useActiveCompany
 
 export default function CreateCompanyForm() {
   const [companyName, setCompanyName] = useState('');
@@ -16,7 +18,8 @@ export default function CreateCompanyForm() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuthContext(); // Obtener el usuario del contexto
+  const { user } = useAuthContext();
+  const { setActiveCompanyId } = useActiveCompany(); // Get setActiveCompanyId
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,21 +28,22 @@ export default function CreateCompanyForm() {
       return;
     }
 
-    if (!user || !user.uid) { // Verificar si el usuario está autenticado
+    if (!user || !user.uid) {
       toast({ title: "Error", description: "Debes iniciar sesión para crear una empresa.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    const result = await createCompany(companyName, user.uid); // Pasar user.uid
+    const result = await createCompany(companyName, user.uid);
     setIsLoading(false);
 
     if ('id' in result) {
       toast({ title: "Éxito", description: `Empresa "${companyName}" creada.` });
       setCompanyName('');
       setIsOpen(false);
-      router.push(`/dashboard/empresas/${result.id}`); 
+      setActiveCompanyId(result.id); // Set the new company as active
+      router.push(`/dashboard`); // Navigate to the main dashboard for the new active company
     } else {
       toast({ title: "Error al crear empresa", description: result.error, variant: "destructive" });
     }
@@ -56,7 +60,7 @@ export default function CreateCompanyForm() {
         <DialogHeader>
           <DialogTitle>Crear Nueva Empresa</DialogTitle>
           <DialogDescription>
-            Ingresa el nombre para tu nueva empresa. Podrás invitar miembros y agregar cuentas bancarias más tarde.
+            Ingresa el nombre para tu nueva empresa. Se convertirá en tu empresa activa.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -77,9 +81,9 @@ export default function CreateCompanyForm() {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>Cancelar</Button>
-            <Button type="submit" disabled={isLoading || !user} className="bg-primary hover:bg-primary/90 text-primary-foreground"> {/* Deshabilitar si no hay usuario */}
+            <Button type="submit" disabled={isLoading || !user} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-              Crear Empresa
+              Crear y Activar
             </Button>
           </DialogFooter>
         </form>

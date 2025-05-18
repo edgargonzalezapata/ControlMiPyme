@@ -3,13 +3,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Briefcase, Loader2, Edit, Trash2, ShieldAlert } from 'lucide-react';
+import { Briefcase, Loader2, Edit, Trash2, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useAuthContext } from '@/context/AuthProvider';
+import { useActiveCompany } from '@/context/ActiveCompanyProvider'; // Import useActiveCompany
 import type { Company } from '@/lib/types';
 import CreateCompanyForm from './_components/CreateCompanyForm';
-import { collection, query, where, onSnapshot, Unsubscribe, doc, deleteDoc as firebaseDeleteDoc } from 'firebase/firestore'; // Renombrado deleteDoc
+import { collection, query, where, onSnapshot, Unsubscribe, doc, deleteDoc as firebaseDeleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -23,10 +25,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// La Server Action deleteCompany de companyService ya no se usará directamente desde aquí para eliminar.
 
-export default function EmpresasDashboardPage() {
+export default function EmpresasGestionDashboardPage() {
   const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
+  const { setActiveCompanyId } = useActiveCompany(); // Get setActiveCompanyId
+  const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -35,14 +38,8 @@ export default function EmpresasDashboardPage() {
   useEffect(() => {
     let unsubscribe: Unsubscribe | undefined;
 
-    if (isFirebaseReady && !authLoading && user?.uid) {
+    if (isFirebaseReady && !authLoading && user?.uid && db) {
       setIsLoadingCompanies(true);
-      if (!db) {
-        console.error("Firestore DB is not available for company listing.");
-        setCompanies([]);
-        setIsLoadingCompanies(false);
-        return;
-      }
       try {
         const q = query(collection(db, 'companies'), where(`members.${user.uid}`, 'in', ['admin', 'viewer']));
         
@@ -51,28 +48,25 @@ export default function EmpresasDashboardPage() {
           setCompanies(userCompanies);
           setIsLoadingCompanies(false);
         }, (error) => {
-          console.error("Failed to fetch companies with snapshot:", error);
+          console.error("Error al cargar empresas con snapshot:", error);
           toast({ title: "Error al cargar empresas", description: "No se pudieron obtener los datos en tiempo real.", variant: "destructive" });
           setCompanies([]);
           setIsLoadingCompanies(false);
         });
 
       } catch (error) {
-        console.error("Failed to construct query or initial fetch:", error);
+        console.error("Error al construir la consulta:", error);
         toast({ title: "Error al cargar empresas", description: "Hubo un problema al preparar la consulta.", variant: "destructive" });
         setCompanies([]);
         setIsLoadingCompanies(false);
       }
     } else if (isFirebaseReady && !authLoading && !user) {
-      // No user logged in, clear companies and stop loading
       setCompanies([]);
       setIsLoadingCompanies(false);
     } else if (!isFirebaseReady || authLoading) {
-      // Auth is still loading or Firebase not ready
       setIsLoadingCompanies(true);
     }
 
-    // Cleanup listener on unmount
     return () => {
       if (unsubscribe) {
         unsubscribe();
@@ -94,14 +88,13 @@ export default function EmpresasDashboardPage() {
     setIsDeleting(companyToDelete.id);
     try {
       const companyDocRef = doc(db, 'companies', companyToDelete.id);
-      await firebaseDeleteDoc(companyDocRef); // Usar deleteDoc del SDK de cliente
+      await firebaseDeleteDoc(companyDocRef); 
       toast({ title: "Empresa Eliminada", description: `La empresa "${companyToDelete.name}" ha sido eliminada.` });
-      // La lista se actualizará automáticamente gracias a onSnapshot.
     } catch (error: any) {
       console.error("Error deleting company from client:", error);
       let errorMessage = "No se pudo eliminar la empresa.";
       if (error.code === 'permission-denied') {
-        errorMessage = "Error de permisos al eliminar la empresa. Asegúrate de ser el propietario y que las reglas de Firestore lo permitan.";
+        errorMessage = "Error de permisos al eliminar la empresa.";
       } else if (error.message) {
         errorMessage += ` Detalles: ${error.message}`;
       }
@@ -111,8 +104,12 @@ export default function EmpresasDashboardPage() {
     }
   };
 
+  const handleAccessCompany = (companyId: string) => {
+    setActiveCompanyId(companyId);
+    router.push('/dashboard'); // Navigate to the main dashboard for the selected company
+  };
 
-  if (authLoading || (!isFirebaseReady && isLoadingCompanies)) { // Muestra loader si auth carga o si firebase no está listo Y las compañías cargan
+  if (authLoading || (!isFirebaseReady && isLoadingCompanies)) {
     return (
       <div className="container mx-auto flex justify-center items-center py-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -121,7 +118,6 @@ export default function EmpresasDashboardPage() {
     );
   }
   
-  // Si Firebase está listo pero las compañías aún están cargando (y no es por authLoading)
   if (isLoadingCompanies && isFirebaseReady) {
      return (
       <div className="container mx-auto flex justify-center items-center py-10">
@@ -134,7 +130,7 @@ export default function EmpresasDashboardPage() {
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Mis Empresas</h1>
+        <h1 className="text-3xl font-bold text-foreground">Gestionar Empresas</h1>
         <CreateCompanyForm />
       </div>
 
@@ -165,28 +161,25 @@ export default function EmpresasDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Haz clic para ver detalles y gestionar cuentas.
-                </p>
-                 <Button asChild className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Link href={`/dashboard/empresas/${company.id}`}>Acceder a Empresa</Link>
+                 <Button onClick={() => handleAccessCompany(company.id)} className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground">
+                  Acceder a Empresa <ArrowRight className="ml-2 h-4 w-4"/>
                 </Button>
               </CardContent>
               <CardFooter className="flex justify-end gap-2 pt-4 border-t">
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/dashboard/empresas/${company.id}/configuracion`}>
-                    <Edit className="mr-2 h-3 w-3" /> Editar
+                <Button asChild variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setActiveCompanyId(company.id); /*router.push('/dashboard/configuracion');*/ }}>
+                  <Link href="/dashboard/configuracion">
+                    <Edit className="mr-2 h-3 w-3" /> Configurar
                   </Link>
                 </Button>
-                {company.ownerUid === user?.uid && ( // Solo el propietario puede ver el botón de eliminar
+                {company.ownerUid === user?.uid && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" disabled={isDeleting === company.id}>
+                      <Button variant="destructive" size="sm" disabled={isDeleting === company.id} onClick={(e) => e.stopPropagation()}>
                         {isDeleting === company.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
                         Eliminar
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                       <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center"><ShieldAlert className="mr-2 text-destructive h-6 w-6"/>¿Confirmar Eliminación?</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -197,7 +190,7 @@ export default function EmpresasDashboardPage() {
                       <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting === company.id}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => handleDeleteCompany(company)} // Pasar el objeto company completo
+                          onClick={() => handleDeleteCompany(company)}
                           disabled={isDeleting === company.id}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
@@ -215,4 +208,3 @@ export default function EmpresasDashboardPage() {
     </div>
   );
 }
-    

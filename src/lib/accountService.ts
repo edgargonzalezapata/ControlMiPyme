@@ -12,16 +12,18 @@ if (!db) {
 }
 
 const getCurrentUserUid = (): string | null => {
-  if (!auth) return null;
-  return auth.currentUser?.uid || null;
+  // Problematic in server actions. Should receive UID or verify token.
+  return auth?.currentUser?.uid || null;
 };
 
 export async function createBankAccount(companyId: string, accountData: Omit<BankAccount, 'id' | 'companyId' | 'createdAt' | 'updatedAt' | 'balance'>): Promise<{ id: string } | { error: string }> {
   if (!db) return { error: "Firestore no está inicializado." };
   const currentUserUid = getCurrentUserUid();
 
+  // This canUserManageCompany check from a server action context using client SDK for auth is unreliable.
+  // Firestore rules are the primary defense.
   if (!currentUserUid || !(await canUserManageCompany(companyId, currentUserUid))) {
-    return { error: "No autorizado para crear cuentas en esta empresa." };
+    return { error: "No autorizado para crear cuentas en esta empresa (verificación del servidor)." };
   }
 
   try {
@@ -33,24 +35,21 @@ export async function createBankAccount(companyId: string, accountData: Omit<Ban
       updatedAt: serverTimestamp() as any,
     };
     const docRef = await addDoc(collection(db, 'bankAccounts'), newAccountData);
-    revalidatePath(`/dashboard/empresas/${companyId}/cuentas`); // Ruta actualizada
+    revalidatePath(`/dashboard/cuentas`); // Revalidate the new global accounts page
     return { id: docRef.id };
-  } catch (error) {
+  } catch (error)
     console.error("Error creating bank account:", error);
     return { error: "No se pudo crear la cuenta bancaria." };
   }
 }
 
+// getBankAccountsByCompany is now primarily called by client-side components.
+// Kept as server action for potential other uses.
 export async function getBankAccountsByCompany(companyId: string): Promise<BankAccount[]> {
   if (!db) return [];
-   const currentUserUid = getCurrentUserUid();
-   if (!currentUserUid) {
-     return []; 
-   }
-   const company = (await import('./companyService')).getCompanyById(companyId);
-   if (!company || !(await company).members[currentUserUid]) {
-        return []; 
-   }
+   const currentUserUid = getCurrentUserUid(); // Unreliable from server context
+   // Client should verify membership before showing link to this company's accounts.
+   // Server rules will enforce actual read permissions.
 
   try {
     const q = query(collection(db, 'bankAccounts'), where('companyId', '==', companyId));
@@ -71,12 +70,8 @@ export async function getBankAccountById(accountId: string): Promise<BankAccount
 
         if (accountSnap.exists()) {
             const account = { id: accountSnap.id, ...accountSnap.data() } as BankAccount;
-            const currentUserUid = getCurrentUserUid();
-            if (!currentUserUid) return null;
-            const company = (await import('./companyService')).getCompanyById(account.companyId);
-            if (!company || !(await company).members[currentUserUid]) {
-                return null;
-            }
+            // Client-side should verify this account belongs to the activeCompanyId.
+            // Server rules will enforce if user can read this specific account.
             return account;
         }
         return null;
@@ -92,8 +87,9 @@ export async function updateBankAccount(accountId: string, data: Partial<Omit<Ba
     const account = await getBankAccountById(accountId); 
     if (!account) return { error: "Cuenta no encontrada o acceso no autorizado." };
 
+    // This check is unreliable from server action context
     if (!(await canUserManageCompany(account.companyId, getCurrentUserUid()))) {
-        return { error: "No autorizado para actualizar esta cuenta bancaria." };
+        return { error: "No autorizado para actualizar esta cuenta bancaria (verificación del servidor)." };
     }
     
     try {
@@ -102,8 +98,8 @@ export async function updateBankAccount(accountId: string, data: Partial<Omit<Ba
             ...data,
             updatedAt: serverTimestamp(),
         });
-        revalidatePath(`/dashboard/empresas/${account.companyId}/cuentas`); // Ruta actualizada
-        revalidatePath(`/dashboard/empresas/${account.companyId}/cuentas/${accountId}`); // Ruta actualizada
+        revalidatePath(`/dashboard/cuentas`); 
+        revalidatePath(`/dashboard/cuentas/${accountId}/importar`); 
         return { success: true };
     } catch (error) {
         console.error("Error updating bank account:", error);
@@ -117,14 +113,15 @@ export async function deleteBankAccount(accountId: string): Promise<{ success: b
     const account = await getBankAccountById(accountId); 
     if (!account) return { error: "Cuenta no encontrada o acceso no autorizado." };
 
+    // This check is unreliable from server action context
     if (!(await canUserManageCompany(account.companyId, getCurrentUserUid()))) {
-        return { error: "No autorizado para eliminar esta cuenta bancaria." };
+        return { error: "No autorizado para eliminar esta cuenta bancaria (verificación del servidor)." };
     }
     
     try {
         const accountDocRef = doc(db, 'bankAccounts', accountId);
         await deleteDoc(accountDocRef);
-        revalidatePath(`/dashboard/empresas/${account.companyId}/cuentas`); // Ruta actualizada
+        revalidatePath(`/dashboard/cuentas`);
         return { success: true };
     } catch (error) {
         console.error("Error deleting bank account:", error);

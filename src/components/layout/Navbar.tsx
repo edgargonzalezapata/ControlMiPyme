@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AuthButtons } from '@/components/auth/AuthButtons';
 import { TrendingUp, Briefcase } from 'lucide-react';
 import { useAuthContext } from '@/context/AuthProvider';
+import { CompanySelector } from './CompanySelector'; // Import the new selector
 
 export function Navbar() {
   const { user } = useAuthContext();
@@ -16,17 +17,12 @@ export function Navbar() {
           <TrendingUp className="h-7 w-7 text-primary" />
           <span className="hidden sm:inline">Control Mipyme</span>
         </Link>
-        <nav className="flex items-center gap-4">
-          {user && (
-            <Link href="/dashboard/empresas" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
-              <Briefcase className="h-4 w-4" />
-              Empresas
-            </Link>
-          )}
+        
+        <div className="flex items-center gap-2 sm:gap-4">
+          {user && <CompanySelector />} 
           <AuthButtons />
-        </nav>
+        </div>
       </div>
     </header>
   );
 }
-

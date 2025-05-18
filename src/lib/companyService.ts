@@ -10,11 +10,12 @@ if (!db) {
   console.warn("Firestore is not initialized. Company service will not work.");
 }
 
-// No longer using getCurrentUserUid for getUserCompanies directly
-// const getCurrentUserUid = (): string | null => {
-//   if (!auth) return null;
-//   return auth.currentUser?.uid || null;
-// };
+const getCurrentUserUid = (): string | null => {
+  // This is problematic for server actions as auth.currentUser is client-side.
+  // Server actions should receive UID or verify token.
+  // For now, this will likely be null if called from a pure server action context.
+  return auth?.currentUser?.uid || null;
+};
 
 export async function createCompany(name: string, ownerUid: string): Promise<{ id: string } | { error: string }> {
   if (!db) return { error: "Firestore no está inicializado." };
@@ -34,7 +35,7 @@ export async function createCompany(name: string, ownerUid: string): Promise<{ i
       updatedAt: serverTimestamp() as any,
     };
     const docRef = await addDoc(collection(db, 'companies'), companyData);
-    revalidatePath('/dashboard/empresas');
+    revalidatePath('/dashboard/empresas'); // Page for managing companies
     return { id: docRef.id };
   } catch (error: any) {
     console.error("Error creating company:", error);
@@ -49,7 +50,7 @@ export async function createCompany(name: string, ownerUid: string): Promise<{ i
   }
 }
 
-// Modified to accept userId as a parameter
+// This function is called by client components now, passing the user's UID.
 export async function getUserCompanies(userId: string): Promise<Company[]> {
   if (!db) return [];
   if (!userId) {
@@ -58,11 +59,9 @@ export async function getUserCompanies(userId: string): Promise<Company[]> {
   }
 
   try {
-    // Query companies where the userId is a key in the members map
-    // and their role is either 'admin' or 'viewer'.
     const q = query(collection(db, 'companies'), where(`members.${userId}`, 'in', ['admin', 'viewer']));
     const querySnapshot = await getDocs(q);
-    const companies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
+    const companies = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Company));
     return companies;
   } catch (error) {
     console.error("Error fetching user companies:", error);
@@ -70,6 +69,9 @@ export async function getUserCompanies(userId: string): Promise<Company[]> {
   }
 }
 
+// getCompanyById is mainly used server-side by other server actions or for initial props (less common now)
+// Client-side components should fetch directly if auth-dependent for read rules.
+// Or, ensure this is called by a context that has the necessary permissions (e.g. admin SDK if needed)
 export async function getCompanyById(companyId: string): Promise<Company | null> {
   if (!db) return null;
   try {
@@ -77,11 +79,7 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
     const companySnap = await getDoc(companyDocRef);
 
     if (companySnap.exists()) {
-      const company = { id: companySnap.id, ...companySnap.data() } as Company;
-      // Authorization for this specific function might be handled by the calling client component,
-      // or by Firestore rules. If called from server, need a way to get auth context.
-      // For now, assuming client-side checks are primary for display.
-      return company;
+      return { id: companySnap.id, ...companySnap.data() } as Company;
     }
     return null;
   } catch (error: any) {
@@ -96,15 +94,8 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
 
 export async function updateCompany(companyId: string, newName: string): Promise<{ success: boolean} | { error: string}> {
   if (!db) return { error: "Firestore no está inicializado." };
-  // For Server Actions that modify data, relying on client-passed UID for canUserManageCompany
-  // can be insecure if not coupled with strong Firestore rules.
-  // Assuming Firestore rules will enforce that only an admin member can update.
-  // const currentUserUid = (await auth?.currentUser?.getIdTokenResult())?.token; // Example for getting user server-side via token, complex
-  // For now, we'll rely on the client providing its UID for the canUserManageCompany check
-  // and Firestore rules to be the ultimate gatekeeper.
-  const tempAuth = auth; // Temporary to get currentUser if available for logging, not for security logic
-  const currentUserUid = tempAuth?.currentUser?.uid;
-
+  
+  const currentUserUid = getCurrentUserUid(); // This is still potentially problematic
 
   if (!currentUserUid || !(await canUserManageCompany(companyId, currentUserUid))) {
     return { error: "No autorizado para actualizar esta empresa. Se requiere ser administrador." };
@@ -116,8 +107,9 @@ export async function updateCompany(companyId: string, newName: string): Promise
       name: newName,
       updatedAt: serverTimestamp(),
     });
-    revalidatePath(`/dashboard/empresas/${companyId}`);
-    revalidatePath(`/dashboard/empresas/${companyId}/configuracion`);
+    revalidatePath('/dashboard/configuracion'); // For the active company config page
+    revalidatePath('/dashboard/empresas'); // For the list of companies
+    // We also need a way to tell ActiveCompanyProvider to refresh details if this is the active company
     return { success: true };
   } catch (error) {
     console.error("Error updating company:", error);
@@ -127,30 +119,31 @@ export async function updateCompany(companyId: string, newName: string): Promise
 
 async function findUserByEmail(email: string): Promise<{ uid: string, displayName: string | null } | null> {
   if (!db) return null;
-  console.warn("findUserByEmail is using a placeholder strategy. This is not secure for production and will likely not find arbitrary users. It will create a placeholder UID based on the email.");
+  console.warn("findUserByEmail is using a placeholder strategy. This is not secure for production. Ideally, use a Firebase Function or Admin SDK to look up users by email.");
+  // This placeholder is NOT for real user lookup. It's a simplification.
+  // In a real app, you'd need a secure way to get UID from email, e.g., via Firebase Admin SDK.
   return { uid: `placeholder_uid_for_${email.replace(/[^a-zA-Z0-9]/g, '_')}`, displayName: email };
 }
 
 
 export async function addCompanyMember(companyId: string, email: string, role: UserRole): Promise<{ success: boolean} | { error: string}> {
   if (!db) return { error: "Firestore no está inicializado." };
-  const tempAuth = auth;
-  const currentUserUid = tempAuth?.currentUser?.uid;
+  const currentUserUid = getCurrentUserUid();
 
   if (!currentUserUid || !(await canUserManageCompany(companyId, currentUserUid))) {
     return { error: "No autorizado para añadir miembros a esta empresa." };
   }
 
-  const company = await getCompanyById(companyId);
+  const company = await getCompanyById(companyId); // This call might fail if rules are strict based on request.auth
   if (!company) return { error: "Empresa no encontrada." };
 
   const userToAdd = await findUserByEmail(email);
   if (!userToAdd?.uid) {
-    return { error: `No se pudo determinar el UID para el correo ${email}.` };
+    return { error: `No se pudo determinar el UID para el correo ${email}. (Usando placeholder)` };
   }
 
   if (company.members && company.members[userToAdd.uid]) {
-    return { error: `El usuario ${email} (o su UID placeholder) ya es miembro de esta empresa.` };
+    return { error: `El usuario ${email} ya es miembro de esta empresa.` };
   }
 
   try {
@@ -159,7 +152,8 @@ export async function addCompanyMember(companyId: string, email: string, role: U
       [`members.${userToAdd.uid}`]: role,
       updatedAt: serverTimestamp(),
     });
-    revalidatePath(`/dashboard/empresas/${companyId}/configuracion`);
+    revalidatePath(`/dashboard/configuracion`);
+    // Need to refresh active company details if this is the active one
     return { success: true };
   } catch (error) {
     console.error("Error adding company member:", error);
@@ -169,8 +163,7 @@ export async function addCompanyMember(companyId: string, email: string, role: U
 
 export async function removeCompanyMember(companyId: string, memberUidToRemove: string): Promise<{ success: boolean} | { error: string}> {
   if (!db) return { error: "Firestore no está inicializado." };
-  const tempAuth = auth;
-  const currentUserUid = tempAuth?.currentUser?.uid;
+  const currentUserUid = getCurrentUserUid();
 
   if (!currentUserUid || !(await canUserManageCompany(companyId, currentUserUid))) {
     return { error: "No autorizado para eliminar miembros de esta empresa." };
@@ -194,8 +187,8 @@ export async function removeCompanyMember(companyId: string, memberUidToRemove: 
     updates.updatedAt = serverTimestamp();
 
     await updateDoc(companyDocRef, updates);
-
-    revalidatePath(`/dashboard/empresas/${companyId}/configuracion`);
+    revalidatePath(`/dashboard/configuracion`);
+    // Need to refresh active company details
     return { success: true };
   } catch (error) {
     console.error("Error removing company member:", error);
@@ -203,52 +196,53 @@ export async function removeCompanyMember(companyId: string, memberUidToRemove: 
   }
 }
 
+// This function is called by client-side now for deletion
+// export async function deleteCompany(companyId: string): Promise<{ success: boolean} | { error: string}> { ... }
+// We keep the server action for potential future use or direct server calls, but client will use direct deleteDoc
 export async function deleteCompany(companyId: string): Promise<{ success: boolean} | { error: string}> {
   if (!db) return { error: "Firestore no está inicializado." };
-  const tempAuth = auth;
-  const currentUserUid = tempAuth?.currentUser?.uid;
-  const company = await getCompanyById(companyId); // This get uses client SDK, may fail due to permissions if called from server context without auth
+  const currentUserUid = getCurrentUserUid();
+  
+  // This getCompanyById call here will likely fail due to request.auth being null from server action context
+  // The client-side deletion logic handles ownership check before calling this.
+  // For this server action to be secure standalone, it would need Admin SDK or token verification.
+  const company = await getCompanyById(companyId); 
 
   if (!company) {
-    return { error: "Empresa no encontrada o acceso denegado." };
+    return { error: "Empresa no encontrada o acceso denegado por el servidor." };
   }
   if (!currentUserUid || company.ownerUid !== currentUserUid) {
-    return { error: "Solo el propietario puede eliminar la empresa." };
+    // This check relies on currentUserUid which is unreliable in server actions using client SDK
+    return { error: "Solo el propietario puede eliminar la empresa (verificación del servidor)." };
   }
 
   try {
     const companyDocRef = doc(db, 'companies', companyId);
     await deleteDoc(companyDocRef);
-    revalidatePath('/dashboard/empresas');
+    revalidatePath('/dashboard/empresas'); // For the list of companies
+    revalidatePath('/dashboard'); // Main dashboard if this was the active company
     return { success: true };
   } catch (error) {
-    console.error("Error deleting company:", error);
-    return { error: "No se pudo eliminar la empresa." };
+    console.error("Error deleting company (server action):", error);
+    return { error: "No se pudo eliminar la empresa (server action)." };
   }
 }
 
-// This function is called by other server actions.
-// It attempts to get company data. It should be robust.
+
 export async function canUserManageCompany(companyId: string, userId?: string | null): Promise<boolean> {
   if (!db || !userId) return false;
-
-  // getCompanyById itself might have auth issues if called from a server context
-  // without client's auth. We must ensure it can fetch the company document.
-  // For now, assuming Firestore rules allow a logged-in user (even on server via some mechanism)
-  // to read the company if they are a member. This is a tricky part.
-  // A more robust `getCompanyById` for server use might need Admin SDK or specific rules.
-  const companyDocRef = doc(db, 'companies', companyId);
+  // This function, if called from a server action, will suffer from request.auth == null.
+  // It's more reliable if companyData is passed in, or if it uses Admin SDK.
   try {
-    const companySnap = await getDoc(companyDocRef);
+    const companyDocRef = doc(db, 'companies', companyId);
+    const companySnap = await getDoc(companyDocRef); // This read needs to be allowed by Firestore rules for the server env
     if (companySnap.exists()) {
-      const companyData = companySnap.data() as Omit<Company, 'id'>; // Cast to ensure members field exists
+      const companyData = companySnap.data() as Omit<Company, 'id'>;
       if (companyData.members && companyData.members[userId] === 'admin') {
         return true;
       }
     }
   } catch (error) {
-      // If getDoc fails due to permissions, it means the server context (even if acting for a user)
-      // can't read the document, so they definitely can't manage it.
       console.error(`Permission error or other issue in canUserManageCompany for company ${companyId}, user ${userId}:`, error);
       return false;
   }
