@@ -1,7 +1,8 @@
+
 "use client";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { signInWithGoogle } from '@/lib/authService';
@@ -9,31 +10,39 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isFirebaseReady } = useAuthContext();
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (isFirebaseReady && !loading && user) {
       router.push('/perfil');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isFirebaseReady]);
 
   const handleSignIn = async () => {
+    if (!isFirebaseReady) {
+      toast({
+        title: "Servicio no disponible",
+        description: "La autenticación no está lista. Inténtalo de nuevo más tarde.",
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       await signInWithGoogle();
       // The useEffect above will handle redirection upon successful login
     } catch (error) {
       console.error("Sign in failed", error);
-      toast({ 
-        title: "Error de inicio de sesión", 
-        description: "No se pudo iniciar sesión con Google. Por favor, inténtalo de nuevo.", 
-        variant: "destructive" 
+      toast({
+        title: "Error de inicio de sesión",
+        description: "No se pudo iniciar sesión con Google. Por favor, inténtalo de nuevo.",
+        variant: "destructive"
       });
     }
   };
 
-  if (loading) {
+  if (loading || !isFirebaseReady) { // Show loader if loading or Firebase not ready
     return (
       <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -53,11 +62,12 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center space-y-6 p-6 sm:p-8">
-            <Button 
-              onClick={handleSignIn} 
-              size="lg" 
+            <Button
+              onClick={handleSignIn}
+              size="lg"
               className="w-full transform transition-transform hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
               aria-label="Continuar con Google"
+              disabled={!isFirebaseReady || loading} // Disable if not ready or loading
             >
               <svg className="mr-3 h-5 w-5" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
               Continuar con Google

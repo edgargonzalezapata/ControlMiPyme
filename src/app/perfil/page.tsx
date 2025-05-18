@@ -3,21 +3,32 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, UserCheck2, ShieldX, ShieldAlert, ShieldCheck } from 'lucide-react'; 
+import { Loader2, Mail, UserCheck2, ShieldX, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
-  const { user, loading, isFirebaseReady } = useAuth();
+  const { user, loading, isFirebaseReady } = useAuthContext();
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isFirebaseReady) return; // Wait for Firebase to be ready
+    if (!isFirebaseReady && !loading) { // If firebase isn't ready and we are not in initial loading phase
+        // This case might be hit if Firebase fails to initialize completely.
+        // The AuthProvider handles the initial console.warn.
+        // Here, we can optionally inform the user or attempt a redirect.
+        toast({
+            title: "Servicio de Autenticación No Disponible",
+            description: "No se pudo conectar con el servicio de autenticación. Serás redirigido.",
+            variant: "destructive"
+        });
+        router.push('/');
+        return;
+    }
 
-    if (!loading && !user) {
+    if (isFirebaseReady && !loading && !user) {
       toast({
         title: "Acceso Denegado",
         description: "Debes iniciar sesión para ver esta página.",
@@ -27,18 +38,7 @@ export default function ProfilePage() {
     }
   }, [user, loading, router, toast, isFirebaseReady]);
 
-  if (!isFirebaseReady && !loading) {
-    return (
-      <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center text-center p-4">
-        <ShieldX className="h-16 w-16 text-destructive mb-4" />
-        <h1 className="text-2xl font-semibold mb-2">Servicio de Autenticación No Disponible</h1>
-        <p className="text-muted-foreground">No se pudo conectar con Firebase. Por favor, verifica la configuración.</p>
-        <Button onClick={() => router.push('/')} className="mt-6">Volver al Inicio</Button>
-      </div>
-    );
-  }
-  
-  if (loading) {
+  if (loading || !isFirebaseReady) { // Show loader if loading or Firebase itself is not yet ready
     return (
       <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -48,7 +48,7 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This case is primarily for when Firebase is ready but user is null (e.g. after failed redirect or direct access attempt)
+    // This case is primarily for when Firebase is ready but user is null (e.g., after failed redirect or direct access attempt)
     // useEffect should handle redirect, but this is a fallback UI.
     return (
         <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center text-center p-4">
@@ -99,8 +99,8 @@ export default function ProfilePage() {
           </div>
           {user.emailVerified !== undefined && (
              <div className="flex items-start space-x-4 p-3 bg-background rounded-md shadow-sm border border-transparent hover:border-primary/30 transition-colors">
-                {user.emailVerified ? 
-                    <ShieldCheck className="h-6 w-6 text-green-500 mt-1 shrink-0" /> : 
+                {user.emailVerified ?
+                    <ShieldCheck className="h-6 w-6 text-green-500 mt-1 shrink-0" /> :
                     <ShieldAlert className="h-6 w-6 text-yellow-500 mt-1 shrink-0" />
                 }
                 <div>
@@ -120,4 +120,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

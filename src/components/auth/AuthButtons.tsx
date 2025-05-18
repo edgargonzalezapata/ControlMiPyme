@@ -1,14 +1,15 @@
+
 "use client";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { signInWithGoogle, signOutUser } from '@/lib/authService';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthProvider';
 import { LogIn, LogOut, UserCircle, ShieldAlert, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function AuthButtons() {
-  const { user, loading, isFirebaseReady } = useAuth();
+  const { user, loading, isFirebaseReady } = useAuthContext();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -19,10 +20,10 @@ export function AuthButtons() {
       toast({ title: "Inicio de Sesión Exitoso", description: "Bienvenido de nuevo!" });
     } catch (error: any) {
       console.error("Sign in failed", error);
-      toast({ 
-        title: "Error de inicio de sesión", 
-        description: error.message || "No se pudo iniciar sesión. Inténtalo de nuevo.", 
-        variant: "destructive" 
+      toast({
+        title: "Error de inicio de sesión",
+        description: error.message || "No se pudo iniciar sesión. Inténtalo de nuevo.",
+        variant: "destructive"
       });
     }
   };
@@ -30,19 +31,19 @@ export function AuthButtons() {
   const handleSignOut = async () => {
     try {
       await signOutUser();
-      router.push('/'); 
+      router.push('/');
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión correctamente." });
     } catch (error: any) {
       console.error("Sign out failed", error);
-      toast({ 
-        title: "Error al cerrar sesión", 
-        description: error.message || "No se pudo cerrar sesión. Inténtalo de nuevo.", 
-        variant: "destructive" 
+      toast({
+        title: "Error al cerrar sesión",
+        description: error.message || "No se pudo cerrar sesión. Inténtalo de nuevo.",
+        variant: "destructive"
       });
     }
   };
 
-  if (!isFirebaseReady && !loading) {
+  if (!isFirebaseReady && !loading) { // Show auth unavailable if Firebase isn't ready and not in initial load
      return (
       <div className="flex items-center gap-2 text-destructive">
         <ShieldAlert className="h-5 w-5" />
@@ -50,7 +51,7 @@ export function AuthButtons() {
       </div>
     );
   }
-  
+
   if (loading) {
     return <Button variant="outline" disabled size="sm" className="w-[140px]"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Cargando...</Button>;
   }
