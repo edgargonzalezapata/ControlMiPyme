@@ -17,7 +17,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Navbar } from '@/components/layout/Navbar'; // Reutilizamos la Navbar superior
+// import { Navbar } from '@/components/layout/Navbar'; // RELLM: Eliminada la importación de Navbar
 import { Loader2, LayoutDashboard, Briefcase, UserCircle, Settings } from 'lucide-react';
 import Image from 'next/image';
 
@@ -64,9 +64,9 @@ export default function DashboardLayout({
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen flex-col">
-        <Navbar /> {/* Mantenemos la Navbar superior para el logo y botones de Auth */}
-        <div className="flex flex-1">
-          <Sidebar className="border-r" collapsible="icon"> {/* o "offcanvas" */}
+        {/* <Navbar /> RELLM: Eliminada la instancia de Navbar */}
+        <div className="flex flex-1 pt-16"> {/* RELLM: Agregado pt-16 para compensar la altura de la Navbar fija en RootLayout */}
+          <Sidebar className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30" collapsible="icon"> {/* o "offcanvas" */} {/* RELLM: Agregado fixed, top-16, left-0, h-[calc(100vh-4rem)], z-30 */}
             <SidebarHeader>
               {/* Podríamos poner un logo más pequeño o título aquí si el sidebar está expandido */}
                <Button variant="ghost" size="icon" className="md:hidden" asChild>
@@ -94,7 +94,8 @@ export default function DashboardLayout({
               {/* Podríamos añadir info del usuario o un botón de cerrar sesión específico del sidebar */}
             </SidebarFooter>
           </Sidebar>
-          <main className="flex-1 flex-col bg-background p-4 md:p-6 lg:p-8 overflow-auto">
+          {/* RELLM: Contenido principal con margen izquierdo para el sidebar */}
+          <main className="flex-1 flex-col bg-background p-4 md:p-6 lg:p-8 overflow-auto ml-0 md:ml-[3rem] group-data-[sidebar-state=expanded]/sidebar-wrapper:md:ml-[16rem] transition-all duration-200 ease-linear">
             {children}
           </main>
         </div>
