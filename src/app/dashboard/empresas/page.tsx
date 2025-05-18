@@ -1,19 +1,69 @@
+"use client";
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Briefcase, PlusCircle } from 'lucide-react';
+import { Briefcase, PlusCircle, Loader2 } from 'lucide-react';
+import { useAuthContext } from '@/context/AuthProvider';
 import { getUserCompanies } from '@/lib/companyService';
 import type { Company } from '@/lib/types';
-import CreateCompanyForm from './_components/CreateCompanyForm'; // Ruta relativa ahora dentro de dashboard/empresas
+import CreateCompanyForm from './_components/CreateCompanyForm';
 
-export const dynamic = 'force-dynamic'; 
+export default function EmpresasDashboardPage() {
+  const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
 
-export default async function EmpresasDashboardPage() {
-  const companies = await getUserCompanies();
+  useEffect(() => {
+    if (isFirebaseReady && !authLoading && user?.uid) {
+      const fetchCompanies = async () => {
+        setIsLoadingCompanies(true);
+        try {
+          const userCompanies = await getUserCompanies(user.uid);
+          setCompanies(userCompanies);
+        } catch (error) {
+          console.error("Failed to fetch companies:", error);
+          setCompanies([]); // Set to empty array on error
+        } finally {
+          setIsLoadingCompanies(false);
+        }
+      };
+      fetchCompanies();
+    } else if (isFirebaseReady && !authLoading && !user) {
+      // No user logged in, or UID not available yet
+      setCompanies([]);
+      setIsLoadingCompanies(false);
+    }
+    // Explicitly set loading to false if firebase isn't ready or auth is still loading after initial check
+    // This prevents indefinite loading if the initial conditions aren't met.
+    else if (!isFirebaseReady || authLoading) {
+        setIsLoadingCompanies(true); // Keep loading if auth or firebase is not ready
+    }
+
+  }, [user, authLoading, isFirebaseReady]);
+
+  if (authLoading || (!isFirebaseReady && isLoadingCompanies)) {
+    return (
+      <div className="container mx-auto flex justify-center items-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Cargando tus datos...</p>
+      </div>
+    );
+  }
+  
+  if (isLoadingCompanies && isFirebaseReady) {
+     return (
+      <div className="container mx-auto flex justify-center items-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Cargando empresas...</p>
+      </div>
+    );
+  }
+
 
   return (
-    <div className="container mx-auto"> {/* El padding general lo da el DashboardLayout */}
+    <div className="container mx-auto">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-foreground">Mis Empresas</h1>
         <CreateCompanyForm />
@@ -38,11 +88,12 @@ export default async function EmpresasDashboardPage() {
             <Card key={company.id} className="flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
               <CardHeader>
                 <CardTitle className="text-xl flex items-center gap-2">
-                  <Briefcase className="h-6 w-6 text-primary" /> 
+                  <Briefcase className="h-6 w-6 text-primary" />
                   {company.name}
                 </CardTitle>
                 <CardDescription>
-                  {company.ownerUid === auth?.currentUser?.uid ? "Propietario" : `Miembro (${company.members[auth?.currentUser?.uid || ''] || 'viewer'})`}
+                  {/* Use user.uid from AuthContext */}
+                  {company.ownerUid === user?.uid ? "Propietario" : `Miembro (${company.members[user?.uid || ''] || 'lector'})`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -52,7 +103,6 @@ export default async function EmpresasDashboardPage() {
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                  {/* Enlace actualizado a la nueva ruta anidada */}
                   <Link href={`/dashboard/empresas/${company.id}`}>Acceder a Empresa</Link>
                 </Button>
               </CardFooter>
@@ -63,5 +113,3 @@ export default async function EmpresasDashboardPage() {
     </div>
   );
 }
-
-import { auth } from '@/lib/firebase';
