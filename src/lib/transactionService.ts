@@ -25,62 +25,78 @@ export async function processBankStatement(
       return { error: `No se pudo encontrar la hoja de trabajo: ${firstSheetName}`, fileName: originalFileName };
     }
 
-    // Convertir a JSON, esperando que la primera fila sea la cabecera.
-    // Usar raw: false para que las fechas se intenten parsear por la librería si es posible.
-    // Si cellDates: true no funciona bien para tu formato, puedes quitarlo y parsear manualmente como antes.
     const jsonData: any[][] = xlsx.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: false });
 
-    if (jsonData.length < 2) { // Necesita al menos cabecera y una fila de datos
+    if (jsonData.length < 2) {
       return { error: 'El archivo no contiene suficientes datos (mínimo cabecera y una fila).', fileName: originalFileName };
     }
 
-    const headerRow = jsonData.shift() as string[]; // Extraer la fila de cabecera
-    if (!headerRow || headerRow.length < 4) {
-      return { error: 'Formato de cabecera de archivo no esperado. Se esperaban al menos 4 columnas.', fileName: originalFileName };
+    const headerRow = jsonData.shift() as string[]; 
+    if (!headerRow || headerRow.length === 0) { // Adjusted to check for empty headerRow
+      return { error: 'Formato de cabecera de archivo no esperado o cabecera vacía.', fileName: originalFileName };
     }
     
-    // Encontrar índices de columnas basados en nombres comunes (ajusta según sea necesario)
-    // Esto es más robusto que depender de índices fijos.
     const normalizeHeader = (header: string) => header ? header.trim().toLowerCase() : "";
 
     const fechaIndex = headerRow.findIndex(h => normalizeHeader(h).includes('fecha'));
     const descIndex = headerRow.findIndex(h => normalizeHeader(h).includes('descripción') || normalizeHeader(h).includes('descripcion'));
-    const cargosIndex = headerRow.findIndex(h => normalizeHeader(h).includes('cargo') || normalizeHeader(h).includes('cheque')); // Ej: "Cargos", "Cheques / Cargos"
-    const abonosIndex = headerRow.findIndex(h => normalizeHeader(h).includes('abono') || normalizeHeader(h).includes('depósito')); // Ej: "Abonos", "Depósitos / Abonos"
+    const cargosIndex = headerRow.findIndex(h => normalizeHeader(h).includes('cargo') || normalizeHeader(h).includes('cheque'));
+    const abonosIndex = headerRow.findIndex(h => normalizeHeader(h).includes('abono') || normalizeHeader(h).includes('depósito'));
 
     if (fechaIndex === -1 || descIndex === -1 || (cargosIndex === -1 && abonosIndex === -1) ) {
         let missing = [];
         if (fechaIndex === -1) missing.push("Fecha");
-        if (descIndex === -1) missing.push("Descripción");
-        if (cargosIndex === -1 && abonosIndex === -1) missing.push("Cargos o Abonos");
-        return { error: `Columnas esperadas no encontradas en el archivo: ${missing.join(', ')}. Cabeceras encontradas: ${headerRow.join(', ')}`, fileName: originalFileName };
+        if (descIndex === -1) missing.push("Descripción/Descripcion");
+        if (cargosIndex === -1 && abonosIndex === -1) missing.push("Cargos/Cheques o Abonos/Depósitos");
+        return { error: `Columnas esperadas no encontradas: ${missing.join(', ')}. Cabeceras encontradas: ${headerRow.join(', ')}`, fileName: originalFileName };
     }
-
 
     const transactions: ParsedTransaction[] = [];
     const warnings: string[] = [];
 
+    const parseAmount = (value: string): number => {
+      if (!value) return 0;
+      // 1. Remove '$' symbol
+      // 2. Remove '.' (as thousands separator for CLP style)
+      // 3. Replace ',' (as decimal separator) with '.' for parseFloat
+      const cleanedValue = String(value).replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '.');
+      return parseFloat(cleanedValue) || 0;
+    };
+
     for (const row of jsonData) {
       if (!row || row.every(cell => cell === null || cell === undefined || String(cell).trim() === "")) {
-        continue; // Saltar filas completamente vacías
+        continue; 
       }
 
       try {
         const dateValue = row[fechaIndex];
         let date: Date;
+
         if (dateValue instanceof Date) {
           date = dateValue;
-        } else if (typeof dateValue === 'number') { // Excel date serial number
-           // Convert Excel serial date to JS Date: Excel dates are 1-indexed from 1900-01-00 or 1904-01-01
-           // This formula is for Windows Excel (1900 base). Mac Excel might use 1904 base.
-           // (excelSerialNumber - 25569) * 86400 * 1000 for dates after 1900-03-01 due to leap year bug in Excel for 1900
-           // Simpler: (serial - (25567 + 1)) * 86400 * 1000 for dates post 1900, where 25567 is days from 1899-12-30 to 1970-01-01.
-           // The `cellDates: true` option in xlsx.read should handle this, but as a fallback:
+        } else if (typeof dateValue === 'number') { 
           date = new Date(Math.round((dateValue - 25569) * 86400 * 1000));
         } else if (typeof dateValue === 'string') {
-          date = new Date(dateValue);
+          const parts = dateValue.split('/');
+          if (parts.length === 2) { // DD/MM format
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+            const year = new Date().getFullYear(); // Assume current year
+            date = new Date(year, month, day);
+          } else if (parts.length === 3) { // DD/MM/YY or DD/MM/YYYY
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            let year = parseInt(parts[2], 10);
+            if (year < 100) { // YY format
+              year += 2000; // Assume 20xx
+            }
+            date = new Date(year, month, day);
+          } else {
+            warnings.push(`Fila omitida: Formato de fecha string no reconocido: ${dateValue}`);
+            continue;
+          }
         } else {
-          warnings.push(`Fila omitida: Formato de fecha no reconocido: ${dateValue}`);
+          warnings.push(`Fila omitida: Tipo de dato de fecha no reconocido: ${typeof dateValue} para valor ${dateValue}`);
           continue;
         }
 
@@ -91,30 +107,44 @@ export async function processBankStatement(
 
         const description = String(row[descIndex] || '').trim();
         if (!description) {
-          warnings.push(`Fila omitida: Descripción vacía.`);
-          continue;
+          // warnings.push(`Fila omitida: Descripción vacía.`); // Allow empty descriptions if amounts are present
         }
         
-        // Leer cargos y abonos. Si una columna no existe, su índice será -1.
-        const chargeValue = cargosIndex !== -1 ? String(row[cargosIndex] || '0').replace(',', '.') : '0';
-        const depositValue = abonosIndex !== -1 ? String(row[abonosIndex] || '0').replace(',', '.') : '0';
+        const chargeValue = cargosIndex !== -1 ? String(row[cargosIndex] || '0') : '0';
+        const depositValue = abonosIndex !== -1 ? String(row[abonosIndex] || '0') : '0';
 
-        const charge = parseFloat(chargeValue) || 0;
-        const deposit = parseFloat(depositValue) || 0;
+        const charge = parseAmount(chargeValue);
+        const deposit = parseAmount(depositValue);
         
         if (charge === 0 && deposit === 0) {
-          // Si ambos son cero y la descripción no es trivial, podría ser una fila informativa.
-          // Por ahora, las omitimos si no tienen impacto financiero.
-          if (description.length > 5) { // Heurística
-             warnings.push(`Fila omitida: Sin monto de cargo o abono para "${description}".`);
+          if (description.length > 3) { // Only warn if description is not trivial
+             warnings.push(`Fila con descripción "${description}" omitida: Sin monto de cargo o abono.`);
           }
           continue;
         }
 
         if (charge !== 0 && deposit !== 0) {
-          warnings.push(`Fila omitida: Contiene tanto cargo (${charge}) como abono (${deposit}) para "${description}". Se procesará como dos transacciones separadas si es necesario en el futuro.`);
-          // Podríamos crear dos transacciones aquí, pero por simplicidad, lo omitimos.
-          continue;
+          warnings.push(`Fila para "${description}" tiene tanto cargo (${charge}) como abono (${deposit}). Se procesará como dos transacciones separadas si es necesario en el futuro o se puede ajustar esta lógica.`);
+          // For now, we could prioritize one or skip. Let's skip to avoid ambiguity without further rules.
+          // Or, create two transactions? For simplicity, let's take the first non-zero one or create two.
+          // Creating two separate transactions:
+          if (deposit !== 0) {
+             transactions.push({
+                date: date.toISOString(),
+                description: `${description} (Abono)`,
+                amount: deposit,
+                type: 'ingreso',
+            });
+          }
+          if (charge !== 0) {
+             transactions.push({
+                date: date.toISOString(),
+                description: `${description} (Cargo)`,
+                amount: -Math.abs(charge),
+                type: 'egreso',
+            });
+          }
+          continue; // Continue as we've handled this row.
         }
         
         let amount: number;
@@ -124,12 +154,12 @@ export async function processBankStatement(
           amount = deposit;
           type = 'ingreso';
         } else { // charge !== 0
-          amount = -Math.abs(charge); // Asegurar que los egresos sean negativos
+          amount = -Math.abs(charge); 
           type = 'egreso';
         }
         
         transactions.push({
-          date: date.toISOString(), // Devolver como ISO string
+          date: date.toISOString(),
           description,
           amount,
           type,
@@ -137,13 +167,16 @@ export async function processBankStatement(
 
       } catch (rowError: any) {
         console.error('Error procesando fila:', row, rowError);
-        warnings.push(`Error procesando una fila: ${rowError.message}. Fila: ${row.join(', ')}`);
+        warnings.push(`Error procesando una fila: ${rowError.message}. Fila: ${row ? row.join(', ') : 'FILA INDEFINIDA'}`);
       }
     }
 
     if (transactions.length === 0 && warnings.length === 0) {
         return { error: 'No se encontraron transacciones válidas en el archivo.', fileName: originalFileName, warnings };
+    } else if (transactions.length === 0 && warnings.length > 0) {
+        return { error: 'No se extrajeron transacciones. Revise las advertencias.', fileName: originalFileName, warnings };
     }
+
 
     return { data: transactions, fileName: originalFileName, warnings };
 
