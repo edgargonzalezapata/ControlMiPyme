@@ -64,24 +64,24 @@ export default function DashboardLayout({
     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: UserCircle },
   ];
 
-  const userInitials = user?.displayName ? user.displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : <UserCircle size={20}/>;
+  const userInitials = user?.displayName ? user.displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : <UserCircle size={18}/>; // Adjusted size for fallback
 
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen flex-col">
-        {/* Navbar is in RootLayout, not needed here */}
+        {/* Navbar is in RootLayout */}
         <div className="flex flex-1 pt-16"> {/* pt-16 for Navbar fixed in RootLayout */}
           <Sidebar 
             className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30 bg-card" 
             collapsible="none" // Always expanded on desktop
           >
-            <SidebarHeader className="p-4 border-b">
-               <div className="flex items-center gap-3 mb-3">
-                <Avatar className="h-12 w-12 border-2 border-primary">
+            <SidebarHeader className="p-3 border-b"> {/* Adjusted padding */}
+               <div className="flex items-center gap-3"> {/* Removed mb-3 for tighter spacing with border-b */}
+                <Avatar className="h-10 w-10"> {/* Adjusted size, removed explicit border */}
                   {user.photoURL ? (
                     <AvatarImage src={user.photoURL} alt={user.displayName || 'Usuario'} />
                   ) : null }
-                  <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                  <AvatarFallback className="bg-primary/20 text-primary font-semibold text-sm"> {/* Adjusted font size for fallback */}
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -94,11 +94,11 @@ export default function DashboardLayout({
                   </p>
                 </div>
               </div>
-               <Button variant="ghost" size="icon" className="md:hidden absolute top-3 right-3" asChild>
+               <Button variant="ghost" size="icon" className="md:hidden absolute top-2 right-2 h-8 w-8" asChild> {/* Adjusted size and position for mobile trigger */}
                  <SidebarTrigger />
                </Button>
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent className="pt-2"> {/* Added padding top to content if header is tighter */}
               <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
