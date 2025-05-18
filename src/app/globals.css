@@ -43,19 +43,19 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
 
-    /* Sidebar colors - using existing defaults for now */
+    /* Sidebar colors */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-primary: hsl(var(--primary)); /* Using app's primary color */
+    --sidebar-primary-foreground: hsl(var(--primary-foreground)); /* Using app's primary foreground */
+    --sidebar-accent: hsl(var(--primary)); /* Use primary color for hover/active background */
+    --sidebar-accent-foreground: hsl(var(--primary-foreground)); /* Use primary foreground for hover/active text */
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: hsl(var(--primary)); /* Use primary color for rings */
   }
 
   .dark {
-    /* Dark theme values from original, can be customized further if dark mode is a focus */
+    /* Dark theme values */
     --background: 220 10% 10%;
     --foreground: 220 15% 90%;
 
@@ -82,7 +82,7 @@ body {
 
     --border: 220 10% 30%;
     --input: 220 10% 28%;
-    --ring: 220 100% 79%; /* Primary color for rings */
+    --ring: hsl(var(--primary)); /* Primary color for rings */
     
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -90,15 +90,15 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    /* Sidebar dark colors - using existing defaults */
+    /* Sidebar dark colors */
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: hsl(var(--primary)); /* Using app's primary color */
+    --sidebar-primary-foreground: hsl(var(--primary-foreground)); /* Using app's primary foreground */
+    --sidebar-accent: hsl(var(--primary)); /* Use primary color for hover/active background */
+    --sidebar-accent-foreground: hsl(var(--primary-foreground)); /* Use primary foreground for hover/active text */
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: hsl(var(--primary)); /* Use primary color for rings */
   }
 }
 
