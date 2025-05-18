@@ -26,10 +26,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-      {/*
-        The <body> tag no longer needs font-related classes as they are now on the <html> tag.
-        The globals.css file already applies background, foreground, and the primary font-family (var(--font-geist-sans)) to the body element.
-      */}
       <body>
         <div className="flex min-h-screen flex-col">
           <Navbar />
