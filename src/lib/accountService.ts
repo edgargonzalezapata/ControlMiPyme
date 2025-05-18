@@ -5,7 +5,7 @@ import { db } from '@/lib/firestore';
 import type { BankAccount } from '@/lib/types';
 import { collection, addDoc, query, where, getDocs, doc, updateDoc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import { canUserManageCompany } from './companyService'; // For authorization
+import { canUserManageCompany } from './companyService'; 
 
 if (!db) {
   console.warn("Firestore is not initialized. Account service will not work.");
@@ -28,12 +28,12 @@ export async function createBankAccount(companyId: string, accountData: Omit<Ban
     const newAccountData: Omit<BankAccount, 'id'> = {
       ...accountData,
       companyId,
-      balance: 0, // Initial balance
+      balance: 0, 
       createdAt: serverTimestamp() as any,
       updatedAt: serverTimestamp() as any,
     };
     const docRef = await addDoc(collection(db, 'bankAccounts'), newAccountData);
-    revalidatePath(`/empresas/${companyId}/cuentas`);
+    revalidatePath(`/dashboard/empresas/${companyId}/cuentas`); // Ruta actualizada
     return { id: docRef.id };
   } catch (error) {
     console.error("Error creating bank account:", error);
@@ -44,18 +44,13 @@ export async function createBankAccount(companyId: string, accountData: Omit<Ban
 export async function getBankAccountsByCompany(companyId: string): Promise<BankAccount[]> {
   if (!db) return [];
    const currentUserUid = getCurrentUserUid();
-   // Simple check: user must be authenticated. Deeper check would involve company membership.
    if (!currentUserUid) {
-     return []; // Or throw an error / return { error: "Not authenticated"}
+     return []; 
    }
-   // Further authorization check: ensure user is part of the company (viewer or admin)
-   // This logic might be in a higher layer or companyService
    const company = (await import('./companyService')).getCompanyById(companyId);
    if (!company || !(await company).members[currentUserUid]) {
-        // console.warn(`User ${currentUserUid} attempted to access accounts for company ${companyId} without membership.`);
-        return []; // Not a member, return empty or error
+        return []; 
    }
-
 
   try {
     const q = query(collection(db, 'bankAccounts'), where('companyId', '==', companyId));
@@ -76,12 +71,10 @@ export async function getBankAccountById(accountId: string): Promise<BankAccount
 
         if (accountSnap.exists()) {
             const account = { id: accountSnap.id, ...accountSnap.data() } as BankAccount;
-            // Authorization check
             const currentUserUid = getCurrentUserUid();
             if (!currentUserUid) return null;
             const company = (await import('./companyService')).getCompanyById(account.companyId);
             if (!company || !(await company).members[currentUserUid]) {
-                // console.warn(`User ${currentUserUid} attempted to access account ${accountId} without proper company membership.`);
                 return null;
             }
             return account;
@@ -96,7 +89,7 @@ export async function getBankAccountById(accountId: string): Promise<BankAccount
 export async function updateBankAccount(accountId: string, data: Partial<Omit<BankAccount, 'id' | 'companyId' | 'createdAt' | 'updatedAt' | 'balance'>>): Promise<{ success: boolean} | { error: string}> {
     if (!db) return { error: "Firestore no está inicializado." };
     
-    const account = await getBankAccountById(accountId); // This includes auth check
+    const account = await getBankAccountById(accountId); 
     if (!account) return { error: "Cuenta no encontrada o acceso no autorizado." };
 
     if (!(await canUserManageCompany(account.companyId, getCurrentUserUid()))) {
@@ -109,8 +102,8 @@ export async function updateBankAccount(accountId: string, data: Partial<Omit<Ba
             ...data,
             updatedAt: serverTimestamp(),
         });
-        revalidatePath(`/empresas/${account.companyId}/cuentas`);
-        revalidatePath(`/empresas/${account.companyId}/cuentas/${accountId}`);
+        revalidatePath(`/dashboard/empresas/${account.companyId}/cuentas`); // Ruta actualizada
+        revalidatePath(`/dashboard/empresas/${account.companyId}/cuentas/${accountId}`); // Ruta actualizada
         return { success: true };
     } catch (error) {
         console.error("Error updating bank account:", error);
@@ -121,23 +114,20 @@ export async function updateBankAccount(accountId: string, data: Partial<Omit<Ba
 export async function deleteBankAccount(accountId: string): Promise<{ success: boolean} | { error: string}> {
     if (!db) return { error: "Firestore no está inicializado." };
 
-    const account = await getBankAccountById(accountId); // This includes auth check
+    const account = await getBankAccountById(accountId); 
     if (!account) return { error: "Cuenta no encontrada o acceso no autorizado." };
 
     if (!(await canUserManageCompany(account.companyId, getCurrentUserUid()))) {
         return { error: "No autorizado para eliminar esta cuenta bancaria." };
     }
     
-    // Add check: cannot delete if there are transactions associated (or delete them too - careful!)
-    // For now, we'll allow deletion.
     try {
         const accountDocRef = doc(db, 'bankAccounts', accountId);
         await deleteDoc(accountDocRef);
-        revalidatePath(`/empresas/${account.companyId}/cuentas`);
+        revalidatePath(`/dashboard/empresas/${account.companyId}/cuentas`); // Ruta actualizada
         return { success: true };
     } catch (error) {
         console.error("Error deleting bank account:", error);
         return { error: "No se pudo eliminar la cuenta bancaria." };
     }
 }
-

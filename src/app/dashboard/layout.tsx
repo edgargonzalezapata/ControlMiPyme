@@ -17,7 +17,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Loader2, LayoutDashboard, Briefcase, UserCircle } from 'lucide-react'; // Settings icon removed as it's part of Empresas section now
+import { Loader2, LayoutDashboard, Briefcase, UserCircle } from 'lucide-react';
 import Image from 'next/image';
 
 export default function DashboardLayout({
@@ -39,7 +39,7 @@ export default function DashboardLayout({
     }
   }, [user, loading, router, isFirebaseReady]);
 
-  if (loading || !isFirebaseReady || (isFirebaseReady && !user && pathname !== '/')) {
+  if (loading || !isFirebaseReady || (isFirebaseReady && !user && !pathname.startsWith('/dashboard') && pathname !== '/')) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -55,8 +55,8 @@ export default function DashboardLayout({
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/empresas', label: 'Empresas', icon: Briefcase },
-    { href: '/perfil', label: 'Mi Perfil', icon: UserCircle },
+    { href: '/dashboard/empresas', label: 'Empresas', icon: Briefcase },
+    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: UserCircle },
   ];
 
   return (
@@ -66,7 +66,7 @@ export default function DashboardLayout({
         <div className="flex flex-1 pt-16"> {/* pt-16 para compensar la altura de la Navbar fija en RootLayout */}
           <Sidebar 
             className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30" 
-            collapsible="none" /* Cambiado de "icon" a "none" para que esté siempre expandido en desktop */
+            collapsible="none" 
           >
             <SidebarHeader>
                <Button variant="ghost" size="icon" className="md:hidden" asChild>
@@ -80,8 +80,6 @@ export default function DashboardLayout({
                     <Link href={item.href} passHref legacyBehavior>
                       <SidebarMenuButton
                         isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                        // Tooltip no es necesario si el texto siempre es visible en desktop
-                        // tooltip={{children: item.label, side: 'right', align: 'center'}} 
                       >
                         <item.icon />
                         <span>{item.label}</span>
@@ -95,7 +93,6 @@ export default function DashboardLayout({
               {/* Podríamos añadir info del usuario o un botón de cerrar sesión específico del sidebar */}
             </SidebarFooter>
           </Sidebar>
-          {/* Contenido principal con margen izquierdo para el sidebar siempre expandido en desktop */}
           <main className="flex-1 flex-col bg-background p-4 md:p-6 lg:p-8 overflow-auto ml-0 md:ml-[16rem] transition-all duration-200 ease-linear">
             {children}
           </main>
@@ -104,3 +101,4 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+

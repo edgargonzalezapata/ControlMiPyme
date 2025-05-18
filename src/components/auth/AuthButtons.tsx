@@ -16,7 +16,7 @@ export function AuthButtons() {
   const handleSignIn = async () => {
     try {
       await signInWithGoogle();
-      router.push('/dashboard'); // Redirigir a dashboard
+      router.push('/dashboard'); 
       toast({ title: "Inicio de Sesión Exitoso", description: "Bienvenido de nuevo!" });
     } catch (error: any) {
       console.error("Sign in failed", error);
@@ -43,7 +43,7 @@ export function AuthButtons() {
     }
   };
 
-  if (!isFirebaseReady && !loading) { // Show auth unavailable if Firebase isn't ready and not in initial load
+  if (!isFirebaseReady && !loading) { 
      return (
       <div className="flex items-center gap-2 text-destructive">
         <ShieldAlert className="h-5 w-5" />
@@ -60,7 +60,7 @@ export function AuthButtons() {
     return (
       <div className="flex items-center gap-2 sm:gap-3">
         <Button variant="ghost" size="icon" asChild className="rounded-full hover:bg-accent/50">
-          <Link href="/perfil" aria-label="Ir al perfil">
+          <Link href="/dashboard/perfil" aria-label="Ir al perfil">
             <UserCircle className="h-6 w-6 text-foreground hover:text-primary" />
           </Link>
         </Button>
@@ -78,3 +78,4 @@ export function AuthButtons() {
     </Button>
   );
 }
+

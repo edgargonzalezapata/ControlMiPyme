@@ -1,7 +1,7 @@
 
 "use server";
 import { auth } from '@/lib/firebase';
-import { db } from '@/lib/firestore'; // Assuming you'll create this
+import { db } from '@/lib/firestore'; 
 import type { Company, UserRole } from '@/lib/types';
 import { collection, addDoc, query, where, getDocs, doc, updateDoc, serverTimestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
@@ -10,7 +10,6 @@ if (!db) {
   console.warn("Firestore is not initialized. Company service will not work.");
 }
 
-// Helper function to get current user UID
 const getCurrentUserUid = (): string | null => {
   if (!auth) return null;
   return auth.currentUser?.uid || null;
@@ -30,11 +29,11 @@ export async function createCompany(name: string): Promise<{ id: string } | { er
       members: {
         [currentUserUid]: 'admin' as UserRole,
       },
-      createdAt: serverTimestamp() as any, // Firestore will convert this
+      createdAt: serverTimestamp() as any, 
       updatedAt: serverTimestamp() as any,
     };
     const docRef = await addDoc(collection(db, 'companies'), companyData);
-    revalidatePath('/empresas');
+    revalidatePath('/dashboard/empresas'); // Ruta actualizada
     return { id: docRef.id };
   } catch (error) {
     console.error("Error creating company:", error);
@@ -50,8 +49,6 @@ export async function getUserCompanies(): Promise<Company[]> {
   }
 
   try {
-    // Query for companies where the user is a member
-    // Firestore path for members is `members.${currentUserUid}`
     const q = query(collection(db, 'companies'), where(`members.${currentUserUid}`, "!=", null));
     const querySnapshot = await getDocs(q);
     const companies = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company));
@@ -77,7 +74,6 @@ export async function getCompanyById(companyId: string): Promise<Company | null>
   }
 }
 
-// Basic authorization check (can be expanded)
 export async function canUserManageCompany(companyId: string, userId?: string | null): Promise<boolean> {
   const uid = userId || getCurrentUserUid();
   if (!uid) return false;
@@ -102,8 +98,8 @@ export async function updateCompany(companyId: string, name: string): Promise<{ 
             name,
             updatedAt: serverTimestamp(),
         });
-        revalidatePath(`/empresas`);
-        revalidatePath(`/empresas/${companyId}`);
+        revalidatePath(`/dashboard/empresas`); // Ruta actualizada
+        revalidatePath(`/dashboard/empresas/${companyId}`); // Ruta actualizada
         return { success: true };
     } catch (error) {
         console.error("Error updating company:", error);
@@ -117,15 +113,7 @@ export async function addCompanyMember(companyId: string, email: string, role: U
     if (!currentUserUid || !(await canUserManageCompany(companyId, currentUserUid))) {
         return { error: "No autorizado para añadir miembros." };
     }
-
-    // This is a simplified version. In a real app, you'd query for the user by email
-    // to get their UID. For now, we'll assume we can get UID if this were fully implemented.
-    // Firebase Admin SDK would be needed for a robust user lookup by email.
-    // Placeholder:
-    // const targetUser = await getUserByEmail(email); // Needs Firebase Admin
-    // if (!targetUser) return { error: "Usuario no encontrado." };
-    // const targetUserUid = targetUser.uid;
-    const targetUserUid = "placeholder_uid_for_" + email.split('@')[0]; // Replace with actual UID lookup
+    const targetUserUid = "placeholder_uid_for_" + email.split('@')[0]; 
 
     try {
         const companyDocRef = doc(db, 'companies', companyId);
@@ -133,7 +121,7 @@ export async function addCompanyMember(companyId: string, email: string, role: U
             [`members.${targetUserUid}`]: role,
             updatedAt: serverTimestamp(),
         });
-        revalidatePath(`/empresas/${companyId}/configuracion`);
+        revalidatePath(`/dashboard/empresas/${companyId}/configuracion`); // Ruta actualizada
         return { success: true };
     } catch (error) {
         console.error("Error adding company member:", error);
@@ -155,9 +143,6 @@ export async function removeCompanyMember(companyId: string, memberUid: string):
 
     try {
         const companyDocRef = doc(db, 'companies', companyId);
-        // To remove a field from a map, you need to provide the full map without the field
-        // or use FieldValue.delete() which is not directly available in server actions like this
-        // Easiest here is to fetch, modify, and set.
         const companyData = await getCompanyById(companyId);
         if (!companyData) return { error: "Empresa no encontrada."};
         
@@ -169,7 +154,7 @@ export async function removeCompanyMember(companyId: string, memberUid: string):
             updatedAt: serverTimestamp(),
         });
 
-        revalidatePath(`/empresas/${companyId}/configuracion`);
+        revalidatePath(`/dashboard/empresas/${companyId}/configuracion`); // Ruta actualizada
         return { success: true };
     } catch (error) {
         console.error("Error removing company member:", error);
@@ -189,12 +174,10 @@ export async function deleteCompany(companyId: string): Promise<{ success: boole
         return { error: "Solo el propietario puede eliminar la empresa." };
     }
 
-    // In a real app, you'd also delete associated bank accounts, transactions, storage files etc.
-    // This requires careful planning and potentially batched writes or a Cloud Function.
     try {
         const companyDocRef = doc(db, 'companies', companyId);
         await deleteDoc(companyDocRef);
-        revalidatePath('/empresas');
+        revalidatePath('/dashboard/empresas'); // Ruta actualizada
         return { success: true };
     } catch (error) {
         console.error("Error deleting company:", error);
