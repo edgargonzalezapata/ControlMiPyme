@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AuthProvider, useAuthContext } from '@/context/AuthProvider'; // Asegúrate que AuthProvider se exporta si es necesario aquí, o que el contexto es suficiente.
+import { useAuthContext } from '@/context/AuthProvider';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -17,8 +17,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-// import { Navbar } from '@/components/layout/Navbar'; // RELLM: Eliminada la importación de Navbar
-import { Loader2, LayoutDashboard, Briefcase, UserCircle, Settings } from 'lucide-react';
+import { Loader2, LayoutDashboard, Briefcase, UserCircle } from 'lucide-react'; // Settings icon removed as it's part of Empresas section now
 import Image from 'next/image';
 
 export default function DashboardLayout({
@@ -58,17 +57,18 @@ export default function DashboardLayout({
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/empresas', label: 'Empresas', icon: Briefcase },
     { href: '/perfil', label: 'Mi Perfil', icon: UserCircle },
-    // Podríamos añadir un ítem de Configuración General aquí si existiera
   ];
 
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen flex-col">
-        {/* <Navbar /> RELLM: Eliminada la instancia de Navbar */}
-        <div className="flex flex-1 pt-16"> {/* RELLM: Agregado pt-16 para compensar la altura de la Navbar fija en RootLayout */}
-          <Sidebar className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30" collapsible="icon"> {/* o "offcanvas" */} {/* RELLM: Agregado fixed, top-16, left-0, h-[calc(100vh-4rem)], z-30 */}
+        {/* Navbar ya está en RootLayout, no se necesita aquí */}
+        <div className="flex flex-1 pt-16"> {/* pt-16 para compensar la altura de la Navbar fija en RootLayout */}
+          <Sidebar 
+            className="border-r fixed top-16 left-0 h-[calc(100vh-4rem)] z-30" 
+            collapsible="none" /* Cambiado de "icon" a "none" para que esté siempre expandido en desktop */
+          >
             <SidebarHeader>
-              {/* Podríamos poner un logo más pequeño o título aquí si el sidebar está expandido */}
                <Button variant="ghost" size="icon" className="md:hidden" asChild>
                  <SidebarTrigger />
                </Button>
@@ -80,7 +80,8 @@ export default function DashboardLayout({
                     <Link href={item.href} passHref legacyBehavior>
                       <SidebarMenuButton
                         isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                        tooltip={{children: item.label, side: 'right', align: 'center'}}
+                        // Tooltip no es necesario si el texto siempre es visible en desktop
+                        // tooltip={{children: item.label, side: 'right', align: 'center'}} 
                       >
                         <item.icon />
                         <span>{item.label}</span>
@@ -94,8 +95,8 @@ export default function DashboardLayout({
               {/* Podríamos añadir info del usuario o un botón de cerrar sesión específico del sidebar */}
             </SidebarFooter>
           </Sidebar>
-          {/* RELLM: Contenido principal con margen izquierdo para el sidebar */}
-          <main className="flex-1 flex-col bg-background p-4 md:p-6 lg:p-8 overflow-auto ml-0 md:ml-[3rem] group-data-[sidebar-state=expanded]/sidebar-wrapper:md:ml-[16rem] transition-all duration-200 ease-linear">
+          {/* Contenido principal con margen izquierdo para el sidebar siempre expandido en desktop */}
+          <main className="flex-1 flex-col bg-background p-4 md:p-6 lg:p-8 overflow-auto ml-0 md:ml-[16rem] transition-all duration-200 ease-linear">
             {children}
           </main>
         </div>
