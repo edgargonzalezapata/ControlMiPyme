@@ -1,4 +1,3 @@
-
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { createCompany } from '@/lib/companyService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthContext } from '@/context/AuthProvider'; // Importar useAuthContext
 
 export default function CreateCompanyForm() {
   const [companyName, setCompanyName] = useState('');
@@ -16,6 +16,7 @@ export default function CreateCompanyForm() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuthContext(); // Obtener el usuario del contexto
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,15 +24,21 @@ export default function CreateCompanyForm() {
       toast({ title: "Error", description: "El nombre de la empresa no puede estar vacío.", variant: "destructive" });
       return;
     }
+
+    if (!user || !user.uid) { // Verificar si el usuario está autenticado
+      toast({ title: "Error", description: "Debes iniciar sesión para crear una empresa.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
-    const result = await createCompany(companyName);
+    const result = await createCompany(companyName, user.uid); // Pasar user.uid
     setIsLoading(false);
 
     if ('id' in result) {
       toast({ title: "Éxito", description: `Empresa "${companyName}" creada.` });
       setCompanyName('');
       setIsOpen(false);
-      // Redirección actualizada a la nueva ruta anidada
       router.push(`/dashboard/empresas/${result.id}`); 
     } else {
       toast({ title: "Error al crear empresa", description: result.error, variant: "destructive" });
@@ -70,7 +77,7 @@ export default function CreateCompanyForm() {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>Cancelar</Button>
-            <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button type="submit" disabled={isLoading || !user} className="bg-primary hover:bg-primary/90 text-primary-foreground"> {/* Deshabilitar si no hay usuario */}
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
               Crear Empresa
             </Button>
