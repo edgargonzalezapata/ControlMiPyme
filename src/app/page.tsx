@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isFirebaseReady && !loading && user) {
-      router.push('/perfil');
+      router.push('/dashboard'); // Redirigir a dashboard en lugar de perfil
     }
   }, [user, loading, router, isFirebaseReady]);
 
@@ -32,6 +32,7 @@ export default function LoginPage() {
     try {
       await signInWithGoogle();
       // The useEffect above will handle redirection upon successful login
+      // router.push('/dashboard'); // No es necesario aquí, el useEffect lo maneja
     } catch (error) {
       console.error("Sign in failed", error);
       toast({
@@ -85,7 +86,7 @@ export default function LoginPage() {
   return (
       <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Redirigiendo a tu perfil...</p>
+        <p className="mt-4 text-muted-foreground">Redirigiendo a tu panel principal...</p>
       </div>
   );
 }

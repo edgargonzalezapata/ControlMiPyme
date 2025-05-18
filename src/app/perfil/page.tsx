@@ -1,7 +1,7 @@
 
 "use client";
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
 import Image from 'next/image';
 import { useAuthContext } from '@/context/AuthProvider';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 export default function ProfilePage() {
   const { user, loading, isFirebaseReady } = useAuthContext();
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isFirebaseReady && !loading) { // If firebase isn't ready and we are not in initial loading phase
-        // This case might be hit if Firebase fails to initialize completely.
-        // The AuthProvider handles the initial console.warn.
-        // Here, we can optionally inform the user or attempt a redirect.
+    if (!isFirebaseReady && !loading) {
         toast({
             title: "Servicio de Autenticación No Disponible",
             description: "No se pudo conectar con el servicio de autenticación. Serás redirigido.",
@@ -38,7 +36,9 @@ export default function ProfilePage() {
     }
   }, [user, loading, router, toast, isFirebaseReady]);
 
-  if (loading || !isFirebaseReady) { // Show loader if loading or Firebase itself is not yet ready
+  const isInsideDashboardLayout = pathname.startsWith('/dashboard');
+
+  if (!isInsideDashboardLayout && (loading || !isFirebaseReady)) {
     return (
       <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -47,9 +47,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
-    // This case is primarily for when Firebase is ready but user is null (e.g., after failed redirect or direct access attempt)
-    // useEffect should handle redirect, but this is a fallback UI.
+  if (!isInsideDashboardLayout && !user && isFirebaseReady) {
     return (
         <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center text-center p-4">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -57,9 +55,23 @@ export default function ProfilePage() {
         </div>
     );
   }
+  
+  if (!user && isFirebaseReady && loading) { // Still loading user info but firebase is ready
+     return (
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Cargando datos del perfil...</p>
+      </div>
+    );
+  }
+  
+  if (!user) { // Should be caught by useEffect, but as a final fallback
+    return null;
+  }
+
 
   return (
-    <div className="flex flex-col items-center justify-center py-8 sm:py-12 bg-background">
+    <div className="flex flex-col items-center justify-center"> {/* Removed py-8 sm:py-12 if inside dashboard */}
       <Card className="w-full max-w-lg shadow-xl rounded-lg overflow-hidden transform transition-all hover:shadow-2xl">
         <CardHeader className="bg-muted/20 p-6 sm:p-8 text-center border-b">
           {user.photoURL ? (
@@ -114,7 +126,7 @@ export default function ProfilePage() {
         </CardContent>
         <CardFooter className="p-6 bg-muted/20 border-t flex justify-center">
            {/* The main sign out button is in the Navbar via AuthButtons component */}
-           <p className="text-xs text-muted-foreground">Puedes cerrar sesión desde el menú de navegación.</p>
+           <p className="text-xs text-muted-foreground">Puedes cerrar sesión desde el menú de navegación superior.</p>
         </CardFooter>
       </Card>
     </div>

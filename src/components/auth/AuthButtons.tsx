@@ -16,7 +16,7 @@ export function AuthButtons() {
   const handleSignIn = async () => {
     try {
       await signInWithGoogle();
-      router.push('/perfil');
+      router.push('/dashboard'); // Redirigir a dashboard
       toast({ title: "Inicio de Sesión Exitoso", description: "Bienvenido de nuevo!" });
     } catch (error: any) {
       console.error("Sign in failed", error);
