@@ -8,7 +8,7 @@ export function Navbar() {
       <div className="container flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold text-foreground hover:text-primary transition-colors">
           <ShieldCheck className="h-7 w-7 text-primary" />
-          <span className="hidden sm:inline">AuthNexus</span>
+          <span className="hidden sm:inline">Control Mipyme</span>
         </Link>
         <AuthButtons />
       </div>

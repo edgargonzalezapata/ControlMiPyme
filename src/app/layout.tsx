@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AuthNexus',
+  title: 'Control Mipyme',
   description: 'Inicio de sesión seguro con Google',
 };
 

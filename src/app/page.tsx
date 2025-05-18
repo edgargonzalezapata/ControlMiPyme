@@ -47,7 +47,7 @@ export default function LoginPage() {
       <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md shadow-xl rounded-lg">
           <CardHeader className="text-center p-6 sm:p-8">
-            <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">Bienvenido a AuthNexus</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">Bienvenido a Control Mipyme</CardTitle>
             <CardDescription className="text-sm sm:text-md text-muted-foreground mt-2">
               Inicia sesión de forma segura y rápida con tu cuenta de Google.
             </CardDescription>
