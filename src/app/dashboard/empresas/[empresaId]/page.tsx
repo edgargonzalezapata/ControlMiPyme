@@ -1,35 +1,107 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, FileText, Users, ArrowRight } from "lucide-react";
+"use client";
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation'; // Importado useParams
 import Link from "next/link";
-import { getCompanyById, canUserManageCompany } from '@/lib/companyService';
-import { auth } from "@/lib/firebase"; 
+import { useAuthContext } from '@/context/AuthProvider'; // Para obtener el usuario
+import { doc, getDoc } from 'firebase/firestore'; // Para acceder a Firestore
+import { db } from '@/lib/firestore'; // Instancia de Firestore
+import type { Company } from '@/lib/types'; // Tipos
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Banknote, FileText, Users, ArrowRight, Loader2 } from "lucide-react";
 
-export const dynamic = 'force-dynamic';
+// No más 'export const dynamic = 'force-dynamic';' ni props de servidor como { params }
+// La función principal ya no es async
+export default function EmpresaDashboardDetailPage() {
+  const router = useRouter();
+  const params = useParams(); // Hook para obtener parámetros de ruta
+  const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
 
-interface EmpresaDashboardPageProps {
-  params: { empresaId: string };
-}
+  const [company, setCompany] = useState<Company | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isLoadingPage, setIsLoadingPage] = useState(true); // Estado de carga para esta página
 
-export default async function EmpresaDashboardDetailPage({ params }: EmpresaDashboardPageProps) {
-  const { empresaId } = params;
-  const company = await getCompanyById(empresaId);
-  
-  if (!company) {
-    return <p>Empresa no encontrada.</p>;
+  const empresaId = params?.empresaId as string;
+
+  useEffect(() => {
+    if (!isFirebaseReady || authLoading) return; // Esperar a que Firebase y la autenticación estén listos
+
+    if (!user) { // Si no hay usuario, no debería estar aquí (layout principal debería redirigir)
+      router.push('/');
+      return;
+    }
+
+    if (empresaId && user.uid) {
+      const fetchCompanyDetails = async () => {
+        setIsLoadingPage(true);
+        if (!db) {
+          console.error("Firestore DB no disponible en página de detalle.");
+          setCompany(null);
+          setIsLoadingPage(false);
+          return;
+        }
+        try {
+          const companyDocRef = doc(db, 'companies', empresaId);
+          const companySnap = await getDoc(companyDocRef);
+
+          if (companySnap.exists()) {
+            const fetchedCompany = { id: companySnap.id, ...companySnap.data() } as Company;
+            // Verificar si el usuario es miembro (necesario para ver la página)
+            if (fetchedCompany.members && fetchedCompany.members[user.uid]) {
+              setCompany(fetchedCompany);
+              setIsAdmin(fetchedCompany.members[user.uid] === 'admin');
+            } else {
+              // No es miembro, redirigir o mostrar error (layout ya lo maneja)
+              setCompany(null); // Asegurar que no se muestre contenido
+            }
+          } else {
+            setCompany(null); // Empresa no encontrada
+          }
+        } catch (error) {
+          console.error("Error fetching company details for page:", error);
+          setCompany(null);
+        } finally {
+          setIsLoadingPage(false);
+        }
+      };
+      fetchCompanyDetails();
+    } else if (!empresaId && isFirebaseReady && !authLoading && user) {
+        setIsLoadingPage(true); // Esperando empresaId
+    }
+
+  }, [empresaId, user, authLoading, router, isFirebaseReady]);
+
+  if (isLoadingPage || authLoading || !isFirebaseReady) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2">Cargando detalles de la empresa...</p>
+      </div>
+    );
   }
 
-  const currentUser = auth?.currentUser;
-  const isAdmin = currentUser ? await canUserManageCompany(empresaId, currentUser.uid) : false;
+  if (!company) {
+    // El layout ya debería haber manejado la redirección si no hay empresa o no está autorizado.
+    // Esto es un fallback.
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Empresa no encontrada o Acceso Denegado</CardTitle>
+          <CardDescription>No se pudo cargar la información de la empresa.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Button onClick={() => router.push('/dashboard/empresas')}>Volver a Mis Empresas</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  // Rutas actualizadas
   const summaryCards = [
     { title: "Cuentas Bancarias", description: "Gestiona tus cuentas", href: `/dashboard/empresas/${empresaId}/cuentas`, icon: Banknote },
     { title: "Transacciones", description: "Importa y visualiza movimientos", href: `/dashboard/empresas/${empresaId}/transacciones`, icon: FileText },
     ...(isAdmin ? [{ title: "Configuración", description: "Administra miembros y empresa", href: `/dashboard/empresas/${empresaId}/configuracion`, icon: Users }] : [])
   ];
-
 
   return (
     <div className="space-y-6">

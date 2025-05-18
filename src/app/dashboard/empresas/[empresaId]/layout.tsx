@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthProvider';
-import { getCompanyById } from '@/lib/companyService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firestore';
 import type { Company } from '@/lib/types';
 import { Loader2, LayoutDashboard, Banknote, Settings, FileText, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,56 +20,79 @@ export default function EmpresaDetailDashboardLayout({
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const empresaId = params.empresaId as string;
+  const empresaId = params?.empresaId as string; // params puede ser null inicialmente
 
   const [company, setCompany] = useState<Company | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [isAuthorizedMember, setIsAuthorizedMember] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loadingCompany, setLoadingCompany] = useState(true);
+  const [loadingCompanyData, setLoadingCompanyData] = useState(true);
 
   useEffect(() => {
-    // Autenticación ya manejada por DashboardLayout
-    if (!isFirebaseReady || authLoading) return;
+    if (!isFirebaseReady || authLoading) {
+      // AuthProvider está manejando el estado de carga inicial o Firebase no está listo
+      return;
+    }
 
     if (!user) {
-      // DashboardLayout debería redirigir, pero esto es un fallback
+      // No hay usuario, redirigir a la página de inicio (DashboardLayout también podría manejar esto)
       router.push('/'); 
       return;
     }
 
-    if (empresaId && user?.uid) {
+    if (empresaId && user.uid) {
       const fetchCompanyData = async () => {
-        setLoadingCompany(true);
-        const fetchedCompany = await getCompanyById(empresaId);
-        if (fetchedCompany) {
-          if (fetchedCompany.members && fetchedCompany.members[user.uid]) {
-            setCompany(fetchedCompany);
-            setIsAuthorized(true);
-            setIsAdmin(fetchedCompany.members[user.uid] === 'admin');
-          } else {
-            setIsAuthorized(false);
-          }
-        } else {
-          setIsAuthorized(false); 
+        setLoadingCompanyData(true);
+        if (!db) {
+          console.error("Firestore DB no está disponible.");
+          setIsAuthorizedMember(false);
+          setLoadingCompanyData(false);
+          return;
         }
-        setLoadingCompany(false);
+        try {
+          const companyDocRef = doc(db, 'companies', empresaId);
+          const companySnap = await getDoc(companyDocRef);
+
+          if (companySnap.exists()) {
+            const fetchedCompany = { id: companySnap.id, ...companySnap.data() } as Company;
+            // Verificar si el usuario actual es miembro
+            if (fetchedCompany.members && fetchedCompany.members[user.uid]) {
+              setCompany(fetchedCompany);
+              setIsAuthorizedMember(true);
+              setIsAdmin(fetchedCompany.members[user.uid] === 'admin');
+            } else {
+              // Usuario no es miembro
+              setIsAuthorizedMember(false);
+            }
+          } else {
+            // Empresa no encontrada
+            setIsAuthorizedMember(false);
+          }
+        } catch (error) {
+          console.error("Error fetching company data in layout:", error);
+          setIsAuthorizedMember(false);
+        } finally {
+          setLoadingCompanyData(false);
+        }
       };
       fetchCompanyData();
+    } else if (!empresaId && isFirebaseReady && !authLoading && user) {
+        // empresaId no está disponible aún, pero el resto está listo.
+        // Esto puede suceder brevemente mientras los params se resuelven.
+        // No hacer nada o mostrar un cargador más específico si es necesario.
+        setLoadingCompanyData(true); // Mantener cargando hasta que empresaId esté disponible
     }
   }, [empresaId, user, authLoading, router, isFirebaseReady]);
 
-  // Cargador principal manejado por DashboardLayout.
-  // Este cargador es para los datos específicos de la empresa.
-  if (authLoading || loadingCompany || isAuthorized === null || !isFirebaseReady) {
+  if (authLoading || loadingCompanyData || isAuthorizedMember === null || !isFirebaseReady) {
     return (
-      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center"> {/* Ajustar altura si es necesario */}
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Cargando datos de la empresa...</p>
       </div>
     );
   }
 
-  if (!isAuthorized || !company) {
+  if (!isAuthorizedMember) {
     return (
       <div className="container mx-auto text-center py-10">
         <h1 className="text-2xl font-semibold text-destructive">Acceso Denegado o Empresa No Encontrada</h1>
@@ -77,8 +101,18 @@ export default function EmpresaDetailDashboardLayout({
       </div>
     );
   }
+  
+  if (!company) {
+    // Este caso no debería ocurrir si isAuthorizedMember es true y loadingCompanyData es false,
+    // pero es un fallback.
+     return (
+      <div className="container mx-auto text-center py-10">
+        <p>Cargando empresa...</p>
+      </div>
+     );
+  }
 
-  // Rutas actualizadas para el menú de la empresa
+
   const navItems = [
     { href: `/dashboard/empresas/${empresaId}`, label: 'Resumen', icon: LayoutDashboard },
     { href: `/dashboard/empresas/${empresaId}/cuentas`, label: 'Cuentas', icon: Banknote },
