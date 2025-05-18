@@ -17,10 +17,14 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Loader2, LayoutDashboard, Briefcase, UserCircle, Banknote, FileText, Settings, ArrowLeftRight, BarChart3, LogOut } from 'lucide-react';
+import { Loader2, LayoutDashboard, Briefcase, UserCircle, Banknote, FileText, Settings, ArrowLeftRight, BarChart3, LogOut, Building, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ActiveCompanyProvider, useActiveCompany } from '@/context/ActiveCompanyProvider'; // Import ActiveCompanyProvider and useActiveCompany
+import { useActiveCompany } from '@/context/ActiveCompanyProvider';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firestore';
+import type { Company } from '@/lib/types';
+
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
@@ -29,6 +33,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
   const [isUserAdminOfActiveCompany, setIsUserAdminOfActiveCompany] = useState(false);
+  const [currentCompanyName, setCurrentCompanyName] = useState<string | null>(null);
+  const [isCompanyContext, setIsCompanyContext] = useState(false);
+
 
   useEffect(() => {
     if (!isFirebaseReady && !authLoading) {
@@ -41,12 +48,27 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   }, [user, authLoading, router, isFirebaseReady]);
 
   useEffect(() => {
+    // Check if the current path is related to a specific company context
+    // This logic might need adjustment based on your exact routing for "active company" views
+    const companySpecificPaths = [
+      '/dashboard/cuentas',
+      '/dashboard/transacciones',
+      '/dashboard/reportes',
+      '/dashboard/configuracion',
+    ];
+    // A more robust check might involve dynamic segments if you had /dashboard/company/[companyId]/cuentas etc.
+    // For now, if activeCompanyId is set, we assume we are in a company context for these paths.
+    setIsCompanyContext(!!activeCompanyId && companySpecificPaths.some(p => pathname.startsWith(p)));
+
     if (activeCompanyDetails && user) {
+      setCurrentCompanyName(activeCompanyDetails.name);
       setIsUserAdminOfActiveCompany(activeCompanyDetails.members[user.uid] === 'admin');
     } else {
+      setCurrentCompanyName(null);
       setIsUserAdminOfActiveCompany(false);
     }
-  }, [activeCompanyDetails, user]);
+  }, [activeCompanyId, activeCompanyDetails, user, pathname]);
+
 
   if (authLoading || !isFirebaseReady || (isFirebaseReady && !user && !pathname.startsWith('/dashboard') && pathname !== '/')) {
     return (
@@ -63,23 +85,36 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   const userInitials = user?.displayName ? user.displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : <UserCircle size={18}/>;
   
-  const navItemsBase = [
+  const baseNavItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, requiresActiveCompany: true },
     { href: '/dashboard/cuentas', label: 'Cuentas', icon: Banknote, requiresActiveCompany: true },
     { href: '/dashboard/transacciones', label: 'Transacciones', icon: FileText, requiresActiveCompany: true },
-    { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3, requiresActiveCompany: true, isPlaceholder: true }, // Placeholder
+    { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3, requiresActiveCompany: true, isPlaceholder: true },
     { href: '/dashboard/configuracion', label: 'Config. Empresa', icon: Settings, requiresActiveCompany: true, isAdminOnly: true },
   ];
 
-  const navItemsManagement = [
+  const managementNavItems = [
      { href: '/dashboard/empresas', label: 'Gestionar Empresas', icon: Briefcase },
      { href: '/dashboard/perfil', label: 'Mi Perfil', icon: UserCircle },
   ];
 
-  const currentNavItems = navItemsBase
-    .filter(item => !item.requiresActiveCompany || !!activeCompanyId)
-    .filter(item => !item.isAdminOnly || (!!activeCompanyId && isUserAdminOfActiveCompany))
-    .concat(navItemsManagement);
+  let currentNavItems;
+  if (isCompanyContext && activeCompanyDetails) { // If in a company specific view and company is active
+    currentNavItems = [
+      { href: '/dashboard/empresas', label: 'Volver a Empresas', icon: ArrowLeft },
+      ...baseNavItems.filter(item => !item.isAdminOnly || isUserAdminOfActiveCompany),
+    ];
+  } else { // General dashboard view or managing companies
+     currentNavItems = [
+        { href: '/dashboard', label: 'Dashboard Principal', icon: LayoutDashboard, requiresActiveCompany: false}, // Link to general dashboard / welcome
+        ...managementNavItems
+    ];
+  }
+  
+  // Filter items that require an active company if no company is active
+  // (This filter is more relevant if some baseNavItems were shown even without company context)
+  currentNavItems = currentNavItems.filter(item => !item.requiresActiveCompany || !!activeCompanyId);
+
 
   return (
     <SidebarProvider defaultOpen>
@@ -108,6 +143,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   </p>
                 </div>
               </div>
+              
               {isLoadingActiveCompany && activeCompanyId && (
                 <div className="p-2 text-sm text-muted-foreground">Cargando empresa...</div>
               )}
@@ -128,7 +164,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     <Link href={item.href} passHref legacyBehavior>
                       <SidebarMenuButton
                         isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                        disabled={item.isPlaceholder || (item.requiresActiveCompany && !activeCompanyId)}
+                        disabled={item.isPlaceholder || (item.requiresActiveCompany && !activeCompanyId && !isCompanyContext)}
                       >
                         <item.icon />
                         <span>{item.label}</span>
@@ -152,10 +188,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Remove ActiveCompanyProvider from here as it's now in RootLayout
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ActiveCompanyProvider>
       <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </ActiveCompanyProvider>
   );
 }
