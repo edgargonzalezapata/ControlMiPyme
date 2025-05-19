@@ -1,4 +1,3 @@
-
 "use client";
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -20,6 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isFirebaseReady, setIsFirebaseReady] = useState(false);
 
   useEffect(() => {
+    console.log("AuthProvider: Checking Firebase Auth initialization status");
+    console.log("AuthProvider: firebaseAuthInstance exists?", !!firebaseAuthInstance);
+    
     if (!firebaseAuthInstance) {
       console.warn("Firebase Auth is not initialized in AuthProvider. Skipping auth state listener.");
       setLoading(false);
@@ -27,9 +29,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    console.log("AuthProvider: Firebase Auth is initialized, setting up auth state listener");
     setIsFirebaseReady(true); // Firebase is available
 
     const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (currentUser) => {
+      console.log("AuthProvider: Auth state changed, user:", currentUser ? `UID: ${currentUser.uid}` : "null");
       setUser(currentUser);
       setLoading(false);
     });

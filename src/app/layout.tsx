@@ -5,6 +5,8 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthProvider';
 import { ActiveCompanyProvider } from '@/context/ActiveCompanyProvider'; // Import ActiveCompanyProvider
+import { ThemeProvider } from '@/context/ThemeProvider';
+import Script from 'next/script';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,15 +29,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Script para detectar JS y activar transiciones después de la carga */}
+        <Script id="js-detection" strategy="beforeInteractive">
+          {`(function() {
+            document.documentElement.classList.add('js-enabled');
+          })()`}
+        </Script>
+      </head>
       <body>
         <AuthProvider>
-          <ActiveCompanyProvider> {/* Wrap with ActiveCompanyProvider here */}
-            <div className="flex min-h-screen flex-col">
-              <Navbar />
-              <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
-            </div>
-            <Toaster />
+          <ActiveCompanyProvider>
+            <ThemeProvider>
+              <div className="flex min-h-screen flex-col">
+                <Navbar />
+                <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
+              </div>
+              <Toaster />
+            </ThemeProvider>
           </ActiveCompanyProvider>
         </AuthProvider>
       </body>

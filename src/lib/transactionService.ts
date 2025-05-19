@@ -1,4 +1,3 @@
-
 "use server";
 import * as xlsx from 'xlsx';
 import type { Timestamp } from 'firebase/firestore';
@@ -56,11 +55,20 @@ export async function processBankStatement(
 
     const parseAmount = (value: string): number => {
       if (!value) return 0;
-      // 1. Remove '$' symbol
-      // 2. Remove '.' (as thousands separator for CLP style)
-      // 3. Replace ',' (as decimal separator) with '.' for parseFloat
-      const cleanedValue = String(value).replace(/\$/g, '').replace(/\./g, '').replace(/,/g, '.');
-      return parseFloat(cleanedValue) || 0;
+      // Para valores en formato CLP:
+      // 1. Remover símbolos '$' y espacios
+      // 2. Remover puntos (separadores de miles en CLP)
+      // 3. La coma es un separador de miles, NO un separador decimal
+      // 4. Interpretar todo el número como un entero
+      
+      // Limpiamos el valor quitando '$', espacios y puntos
+      let cleanedValue = String(value).replace(/\$/g, '').replace(/\s/g, '').replace(/\./g, '');
+      
+      // Si hay comas, las tratamos como separadores de miles y las eliminamos
+      cleanedValue = cleanedValue.replace(/,/g, '');
+      
+      // Convertimos a número entero
+      return parseInt(cleanedValue, 10) || 0;
     };
 
     for (const row of jsonData) {

@@ -1,4 +1,3 @@
-
 import type { Timestamp } from 'firebase/firestore';
 
 export interface UserProfile {
@@ -22,6 +21,7 @@ export interface Company {
   name: string;
   ownerUid: string;
   members: { [uid: string]: UserRole }; // uid: role
+  currency: string; // Add currency field, e.g., CLP, USD
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

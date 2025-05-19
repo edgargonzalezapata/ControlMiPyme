@@ -1,18 +1,55 @@
-
 "use client";
 import Link from 'next/link';
-import { useEffect, useState } from 'react'; // Added useState and useEffect here
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, UserCircle, ArrowRight, Building, Banknote, FileText, Users, Settings, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Briefcase, UserCircle, ArrowRight, Building, Loader2, ArrowRightCircle, 
+  BarChart2, Wallet, CreditCard, TrendingUp, TrendingDown, DollarSign, Settings, PlusCircle, CircleAlert, LayoutDashboard, Upload, ShieldCheck
+} from 'lucide-react';
 import { useAuthContext } from '@/context/AuthProvider';
 import { useActiveCompany } from '@/context/ActiveCompanyProvider';
 import Image from 'next/image';
+import { collection, query, where, onSnapshot, Unsubscribe, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firestore';
+import type { Transaction, Company, BankAccount } from '@/lib/types';
+import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Helper function to get the start of the current month
+const getStartOfMonth = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+// Helper function to format date to YYYY-MM-DD for input[type="date"]
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function DashboardPage() {
   const { user } = useAuthContext();
   const { activeCompanyId, activeCompanyDetails, isLoadingActiveCompany } = useActiveCompany();
+  const router = useRouter();
   const [isUserAdminOfActiveCompany, setIsUserAdminOfActiveCompany] = useState(false);
+
+  // Date filter state
+  const [startDate, setStartDate] = useState<Date>(getStartOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(new Date());
+
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [isLoadingFinancials, setIsLoadingFinancials] = useState(true);
+  const [financialError, setFinancialError] = useState<string | null>(null);
+  
+  // New state for bank accounts and transactions
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [totalBankBalance, setTotalBankBalance] = useState(0);
+  const [transactionCount, setTransactionCount] = useState(0);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
 
   useEffect(() => {
     if (activeCompanyDetails && user) {
@@ -22,123 +59,471 @@ export default function DashboardPage() {
     }
   }, [activeCompanyDetails, user]);
 
+  // Load bank accounts
+  useEffect(() => {
+    if (!activeCompanyId || !db) {
+      setBankAccounts([]);
+      setTotalBankBalance(0);
+      setIsLoadingAccounts(false);
+      return;
+    }
+
+    setIsLoadingAccounts(true);
+    
+    const accountsQuery = query(
+      collection(db as any, "bankAccounts"),
+      where("companyId", "==", activeCompanyId)
+    );
+    
+    const unsubscribe = onSnapshot(accountsQuery, (snapshot) => {
+      const accounts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BankAccount));
+      setBankAccounts(accounts);
+      
+      // Calculate total balance across all accounts
+      const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+      setTotalBankBalance(totalBalance);
+      setIsLoadingAccounts(false);
+    }, (error) => {
+      console.error("Error fetching bank accounts:", error);
+      setIsLoadingAccounts(false);
+    });
+    
+    return () => unsubscribe();
+  }, [activeCompanyId]);
+
+  // Load transaction count
+  useEffect(() => {
+    if (!activeCompanyId || !db) {
+      setTransactionCount(0);
+      return;
+    }
+    
+    const fetchTransactionCount = async () => {
+      try {
+        let transactionsQuery = query(
+          collection(db as any, "transactions"),
+          where("companyId", "==", activeCompanyId)
+        );
+
+        // Apply date filter if dates are valid
+        if (startDate && endDate && startDate <= endDate) {
+          transactionsQuery = query(
+            transactionsQuery,
+            where("date", ">=", startDate),
+            where("date", "<=", endDate)
+          );
+        }
+        
+        const snapshot = await getDocs(transactionsQuery);
+        setTransactionCount(snapshot.size);
+      } catch (error) {
+        console.error("Error counting transactions:", error);
+      }
+    };
+    
+    fetchTransactionCount();
+  }, [activeCompanyId, startDate, endDate]);
+
+  useEffect(() => {
+    if (!activeCompanyId || !db) {
+      setIsLoadingFinancials(false);
+      setTotalIncome(0);
+      setTotalExpenses(0);
+      setBalance(0);
+      if (activeCompanyId) {
+        setFinancialError("No se pudieron cargar las finanzas, base de datos no disponible.");
+      }
+      return;
+    }
+
+    setIsLoadingFinancials(true);
+    setFinancialError(null);
+
+    let transactionsQueryOuter = query(
+      collection(db as any, "transactions"),
+      where("companyId", "==", activeCompanyId)
+    );
+
+    // Apply date filter if dates are valid
+    if (startDate && endDate && startDate <= endDate) {
+      transactionsQueryOuter = query(
+        transactionsQueryOuter,
+        where("date", ">=", startDate),
+        where("date", "<=", endDate)
+      );
+    }
+
+    const unsubscribe = onSnapshot(transactionsQueryOuter, (snapshot) => {
+      let income = 0;
+      let expenses = 0;
+      snapshot.forEach((doc) => {
+        const transaction = doc.data() as Transaction;
+        if (transaction.type === 'ingreso') {
+          income += transaction.amount;
+        } else if (transaction.type === 'egreso') {
+          expenses += transaction.amount;
+        }
+      });
+      setTotalIncome(income);
+      setTotalExpenses(expenses);
+      setBalance(income - expenses);
+      setIsLoadingFinancials(false);
+    }, (error) => {
+      console.error("Error fetching transactions:", error);
+      setFinancialError("Error al cargar las transacciones.");
+      setIsLoadingFinancials(false);
+    });
+
+    return () => unsubscribe();
+  }, [activeCompanyId, startDate, endDate]);
+
+  // Format currency function
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CL', { 
+      style: 'currency', 
+      currency: activeCompanyDetails?.currency || 'CLP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   if (isLoadingActiveCompany && activeCompanyId) {
     return (
-      <div className="flex flex-col items-center justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-2">Cargando datos de la empresa activa...</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] py-10">
+        <div className="relative">
+          <div className="absolute -inset-1 rounded-full bg-indigo-600/30 dark:bg-indigo-500/40 blur-md animate-pulse"></div>
+          <Loader2 className="h-12 w-12 animate-spin text-indigo-600 dark:text-indigo-400 relative z-10" />
+        </div>
+        <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-200">Cargando datos de la empresa activa...</p>
       </div>
     );
   }
 
   const summaryCards = activeCompanyId && activeCompanyDetails ? [
-    { title: "Cuentas Bancarias", description: "Gestiona tus cuentas", href: `/dashboard/cuentas`, icon: Banknote },
-    { title: "Transacciones", description: "Importa y visualiza movimientos", href: `/dashboard/transacciones`, icon: FileText },
-    ...(isUserAdminOfActiveCompany ? [{ title: "Configuración Empresa", description: "Administra empresa activa", href: `/dashboard/configuracion`, icon: Settings }] : [])
+    { title: "Cuentas Bancarias", description: "Gestiona tus cuentas bancarias y saldos", href: `/dashboard/cuentas`, icon: CreditCard, color: "from-blue-400 to-cyan-500" },
+    { title: "Transacciones", description: "Importa y visualiza todos tus movimientos", href: `/dashboard/transacciones`, icon: Wallet, color: "from-emerald-400 to-teal-500" },
+    ...(isUserAdminOfActiveCompany ? [{ title: "Configuración Empresa", description: "Administra y configura tu empresa", href: `/dashboard/configuracion`, icon: Settings, color: "from-amber-400 to-orange-500" }] : [])
   ] : [];
 
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Panel Principal</h1>
+          <p className="text-muted-foreground mt-1">
+            {activeCompanyDetails 
+              ? `Bienvenido a ${activeCompanyDetails.name}`
+              : 'Bienvenido a tu panel de control'
+            }
+          </p>
+        </div>
+        {/* Date Filter Inputs */}
+        {activeCompanyId && (
+          <div className="flex flex-col sm:flex-row gap-2 items-center mt-4 md:mt-0">
+            <div className="flex items-center gap-2">
+              <label htmlFor="startDate" className="text-sm font-medium">Desde:</label>
+              <input 
+                type="date" 
+                id="startDate"
+                name="startDate"
+                value={formatDateForInput(startDate)}
+                onChange={(e) => setStartDate(new Date(e.target.value + 'T00:00:00'))} // Ensure time is start of day
+                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="endDate" className="text-sm font-medium">Hasta:</label>
+              <input 
+                type="date" 
+                id="endDate"
+                name="endDate"
+                value={formatDateForInput(endDate)}
+                onChange={(e) => setEndDate(new Date(e.target.value + 'T23:59:59'))} // Ensure time is end of day
+                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600"
+              />
+            </div>
+          </div>
+        )}
+        {!activeCompanyId ? (
+          <Button
+            onClick={() => router.push('/dashboard/empresas')}
+            className="w-full md:w-auto"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> 
+            Crear Empresa
+          </Button>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard/empresas')}
+            >
+              <Building className="mr-2 h-4 w-4" /> 
+              Gestionar Empresas
+            </Button>
+            <Button
+              onClick={() => router.push('/dashboard/cuentas/nueva')}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> 
+              Nueva Cuenta
+            </Button>
+          </div>
+        )}
+      </div>
+      
       {!activeCompanyId && (
-        <Card className="shadow-lg">
-          <CardHeader className="bg-muted/20 p-6">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              {user?.photoURL ? (
-                <Image
-                  src={user.photoURL}
-                  alt="Foto de perfil"
-                  width={80}
-                  height={80}
-                  className="rounded-full border-4 border-primary shadow-md"
-                  data-ai-hint="user avatar"
-                />
-              ) : (
-                <div className="w-20 h-20 bg-primary text-primary-foreground flex items-center justify-center rounded-full border-4 border-primary/50 shadow-md text-3xl">
-                  {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <UserCircle size={40} />}
-                </div>
-              )}
+        <Card className="bg-gradient-to-r from-muted/70 to-muted border shadow-md animate-fade-in">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg text-white shadow-md">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
               <div>
-                <CardTitle className="text-3xl font-bold text-foreground">
-                  ¡Bienvenido, {user?.displayName?.split(' ')[0] || 'Usuario'}!
-                </CardTitle>
-                <CardDescription className="text-md text-muted-foreground mt-1">
-                  Selecciona una empresa desde el menú superior para comenzar o gestiona tus empresas.
-                </CardDescription>
+                <CardTitle className="text-xl font-bold">Comencemos</CardTitle>
+                <CardDescription className="text-base">Para usar todas las funciones, primero crea o selecciona una empresa.</CardDescription>
               </div>
             </div>
           </CardHeader>
-           <CardContent className="p-6">
-            <p className="text-muted-foreground">
-              Utiliza el selector de empresas en la barra de navegación para activar una empresa y ver su dashboard específico.
-            </p>
-            <Button asChild className="w-full sm:w-auto mt-4 bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/dashboard/empresas">
-                Gestionar Mis Empresas <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+          <CardContent className="flex flex-col md:flex-row gap-4">
+            <Button 
+              className="flex-1 h-auto py-6 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700"
+              onClick={() => router.push('/dashboard/empresas')}
+            >
+              <Building className="h-10 w-10 mb-2" />
+              <div className="text-center">
+                <p className="font-bold text-lg">Crear Empresa</p>
+                <p className="text-sm font-normal text-indigo-100">Configura tu primera empresa para comenzar</p>
+              </div>
             </Button>
+            <div className="flex-1 h-auto p-6 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-lg border border-amber-200 dark:border-amber-800/50 flex flex-col items-center justify-center gap-2 text-center">
+              <CircleAlert className="h-8 w-8 text-amber-500" />
+              <p className="font-semibold text-lg text-amber-800 dark:text-amber-300">¿Ya tienes una empresa?</p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">Usa el selector de empresas en la barra de navegación superior para cambiar entre tus empresas</p>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {activeCompanyId && activeCompanyDetails && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Dashboard de {activeCompanyDetails.name}</CardTitle>
-              <CardDescription>
-                Resumen y accesos directos para <span className="font-semibold">{activeCompanyDetails.name}</span>.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Utiliza el menú de la izquierda para navegar o los accesos directos a continuación.
-              </p>
-            </CardContent>
-          </Card>
+        <div className="space-y-4 animate-fade-in">
+          <Tabs defaultValue="overview">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                General
+              </TabsTrigger>
+              <TabsTrigger value="reports">
+                <BarChart2 className="h-4 w-4 mr-2" />
+                Informes
+              </TabsTrigger>
+              <TabsTrigger value="actions">
+                <Upload className="h-4 w-4 mr-2" />
+                Acciones
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {summaryCards.map(card => (
-              <Card key={card.title} className="hover:shadow-md transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-medium">{card.title}</CardTitle>
-                  <card.icon className="h-5 w-5 text-muted-foreground" />
+            <TabsContent value="overview" className="space-y-4 mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md font-medium flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-primary" />
+                      Cuentas Bancarias
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold flex items-center gap-2">
+                      {isLoadingAccounts ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <>
+                          {bankAccounts.length}
+                          <span className="text-base font-medium text-muted-foreground">
+                            ({formatCurrency(totalBankBalance)})
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {bankAccounts.length > 0 
+                        ? `Saldo total en ${bankAccounts.length} ${bankAccounts.length === 1 ? 'cuenta' : 'cuentas'}`
+                        : "Configure sus cuentas para comenzar a hacer seguimiento financiero"
+                      }
+                    </p>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <Button variant="ghost" className="w-full justify-between" asChild>
+                      <Link href="/dashboard/cuentas">
+                        Ver todas <ArrowRight className="h-4 w-4 ml-1" />
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+                
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md font-medium flex items-center gap-2">
+                      <BarChart2 className="h-4 w-4 text-primary" />
+                      Transacciones
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold flex items-center gap-2">
+                      {isLoadingFinancials ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <>
+                          {transactionCount}
+                          {transactionCount > 0 && (
+                            <span className="text-base font-medium text-muted-foreground">
+                              ({formatCurrency(balance)})
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {transactionCount > 0
+                        ? `Balance de ${transactionCount} ${transactionCount === 1 ? 'transacción' : 'transacciones'}`
+                        : "Importe transacciones desde sus cartolas bancarias"
+                      }
+                    </p>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <Button variant="ghost" className="w-full justify-between" asChild>
+                      <Link href="/dashboard/transacciones">
+                        Administrar <ArrowRight className="h-4 w-4 ml-1" />
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+                
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md font-medium flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-primary" />
+                      Empresa
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold truncate">
+                      {activeCompanyDetails.name}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {activeCompanyDetails.ownerUid ? `ID: ${activeCompanyDetails.ownerUid.substring(0,8)}...` : "Configure su información empresarial"}
+                    </p>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <Button variant="ghost" className="w-full justify-between" asChild>
+                      <Link href="/dashboard/configuracion">
+                        Configuración <ArrowRight className="h-4 w-4 ml-1" />
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
+              
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="md:col-span-2 lg:col-span-3 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Resumen Financiero</CardTitle>
+                    <CardDescription>Panel informativo con balance y movimientos recientes.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {bankAccounts.length > 0 && transactionCount > 0 ? (
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 rounded-lg p-4 flex flex-col items-center">
+                          <TrendingUp className="h-6 w-6 text-green-500 mb-2" />
+                          <p className="text-sm text-green-700 dark:text-green-400">Ingresos</p>
+                          <p className="text-xl font-bold text-green-800 dark:text-green-300">{formatCurrency(totalIncome)}</p>
+                        </div>
+                        
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-lg p-4 flex flex-col items-center">
+                          <TrendingDown className="h-6 w-6 text-red-500 mb-2" />
+                          <p className="text-sm text-red-700 dark:text-red-400">Gastos</p>
+                          <p className="text-xl font-bold text-red-800 dark:text-red-300">{formatCurrency(totalExpenses)}</p>
+                        </div>
+                        
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4 flex flex-col items-center">
+                          <DollarSign className="h-6 w-6 text-blue-500 mb-2" />
+                          <p className="text-sm text-blue-700 dark:text-blue-400">Balance</p>
+                          <p className={`text-xl font-bold ${balance >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-red-800 dark:text-red-300'}`}>
+                            {formatCurrency(balance)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-6 border border-dashed border-muted rounded-lg flex flex-col items-center justify-center">
+                        <BarChart2 className="h-12 w-12 text-muted-foreground opacity-50" />
+                        <p className="mt-2 text-sm text-muted-foreground text-center">
+                          Los gráficos y reportes estarán disponibles cuando importe sus transacciones.
+                        </p>
+                        <Button className="mt-4" asChild>
+                          <Link href="/dashboard/cuentas">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Configurar Cuentas
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="reports" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informes</CardTitle>
+                  <CardDescription>Acceda a diferentes tipos de reportes financieros</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground pb-4">{card.description}</p>
-                  <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-                    <Link href={card.href}>
-                      Ir a {card.title} <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
+                <CardContent className="p-6 border border-dashed border-muted rounded-lg flex flex-col items-center justify-center m-4">
+                  <BarChart2 className="h-12 w-12 text-muted-foreground opacity-50" />
+                  <p className="mt-2 text-sm text-muted-foreground text-center">
+                    Los informes estarán disponibles cuando haya datos de transacciones suficientes.
+                  </p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Estadísticas Rápidas (Próximamente)</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">Aquí verás un resumen de ingresos, egresos y saldo del período actual para {activeCompanyDetails.name}.</p>
-            </CardContent>
-          </Card>
-        </>
+            </TabsContent>
+            
+            <TabsContent value="actions" className="space-y-4 mt-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Importar Cartolas</CardTitle>
+                    <CardDescription>Suba datos bancarios desde archivos Excel.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-4 text-muted-foreground">Seleccione una cuenta bancaria para importar sus movimientos:</p>
+                    <Button asChild>
+                      <Link href="/dashboard/cuentas">
+                        <Upload className="mr-2 h-4 w-4" /> 
+                        Ir a Cuentas Bancarias
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Configuración Avanzada</CardTitle>
+                    <CardDescription>Opciones y preferencias de la empresa.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-4 text-muted-foreground">Personalice las opciones de su empresa y usuarios:</p>
+                    <Button asChild variant="outline">
+                      <Link href="/dashboard/configuracion">
+                        <ShieldCheck className="mr-2 h-4 w-4" /> 
+                        Configuración
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       )}
-       <Card className="mt-8 bg-accent/10 border-accent/30">
-        <CardHeader>
-            <CardTitle>Próximas Funcionalidades Generales</CardTitle>
-            <CardDescription>Estamos trabajando para traerte más herramientas útiles:</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Importación y procesamiento de cartolas bancarias (.xlsx).</li>
-                <li>Clasificación automática de transacciones con IA.</li>
-                <li>Visualización detallada de transacciones con filtros y búsqueda.</li>
-                <li>Paneles de resumen financiero por empresa.</li>
-            </ul>
-        </CardContent>
-       </Card>
     </div>
   );
 }

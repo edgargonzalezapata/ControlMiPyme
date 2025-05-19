@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -12,7 +11,7 @@ import type { BankAccount, Transaction } from '@/lib/types';
 import { useActiveCompany } from '@/context/ActiveCompanyProvider';
 import { useAuthContext } from '@/context/AuthProvider';
 import { processBankStatement, type ParsedTransaction } from '@/lib/transactionService';
-import { doc, getDoc, writeBatch, collection, Timestamp, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, collection, Timestamp, serverTimestamp, updateDoc, query, getDocs, where } from 'firebase/firestore';
 import { db } from '@/lib/firestore';
 
 export default function ImportarCartolaDashboardPage() {
@@ -143,38 +142,174 @@ export default function ImportarCartolaDashboardPage() {
         });
       }
 
-
-      parsedTransactions.forEach((parsedTx) => {
-        const transactionDocRef = doc(transactionsCollectionRef);
-        const transactionDataToSave: Omit<Transaction, 'id'> = {
-          companyId: activeCompanyId, // Ensured not null by checks above
-          accountId: accountId,       // Ensured not null by checks above
-          date: Timestamp.fromDate(new Date(parsedTx.date)),
-          description: parsedTx.description,
-          amount: parsedTx.amount,
-          type: parsedTx.type,
-          originalFileName: file.name,
-          importedAt: serverTimestamp() as Timestamp,
-        };
-        batch.set(transactionDocRef, transactionDataToSave);
-      });
-
-      await batch.commit();
-      toast({ title: "Éxito", description: `${parsedTransactions.length} transacciones importadas de "${file.name}". ${result.warnings && result.warnings.length > 0 ? `${result.warnings.length} advertencias.` : ''}` });
+      // Verificar duplicados antes de escribir
+      // Primero obtenemos todas las transacciones existentes para esta cuenta
+      toast({ title: "Verificando duplicados", description: "Comparando con transacciones existentes...", variant: "default" });
       
-      // Update account balance
       try {
-        let newBalance = account.balance; // account should not be null here due to checks
-        parsedTransactions.forEach(tx => newBalance += tx.amount);
-        const accountDocRef = doc(db, 'bankAccounts', accountId);
-        await updateDoc(accountDocRef, { balance: newBalance, updatedAt: serverTimestamp() });
-        refreshActiveCompanyDetails(); 
-      } catch (balanceError: any) {
-        console.error("Error updating account balance:", balanceError);
-        toast({ title: "Advertencia", description: `Transacciones importadas, pero hubo un error al actualizar el saldo de la cuenta: ${balanceError.message}`, variant: "default" });
+        // Consultar transacciones existentes para esta cuenta y empresa
+        const existingTransactionsQuery = query(
+          collection(db, 'transactions'),
+          where('companyId', '==', activeCompanyId),
+          where('accountId', '==', accountId)
+        );
+        
+        const existingTransactionsSnapshot = await getDocs(existingTransactionsQuery);
+        const existingTransactions = existingTransactionsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Transaction));
+        
+        console.log(`Verificando duplicados. Encontradas ${existingTransactions.length} transacciones existentes.`);
+        
+        // Identificar duplicados y transacciones nuevas
+        const duplicates: any[] = [];
+        const newTransactions: typeof parsedTransactions = [];
+        
+        for (const parsedTx of parsedTransactions) {
+          // Convertir la fecha de string a Date para comparación
+          const parsedDate = new Date(parsedTx.date);
+          
+          // Buscar posibles duplicados basados en fecha, descripción y monto
+          const possibleDuplicates = existingTransactions.filter(existingTx => {
+            const existingDate = (existingTx.date as Timestamp).toDate();
+            
+            // Comparar fecha (solo día, mes y año)
+            const sameDate = 
+              existingDate.getDate() === parsedDate.getDate() &&
+              existingDate.getMonth() === parsedDate.getMonth() &&
+              existingDate.getFullYear() === parsedDate.getFullYear();
+            
+            // Comparar descripción (eliminar espacios extras)
+            const sameDescription = 
+              existingTx.description.toLowerCase().trim() === parsedTx.description.toLowerCase().trim();
+            
+            // Comparar monto (con cierta tolerancia para diferencias de redondeo)
+            const sameAmount = Math.abs(existingTx.amount - parsedTx.amount) < 0.01;
+            
+            // Es un duplicado si coinciden fecha, descripción y monto
+            return sameDate && sameDescription && sameAmount;
+          });
+          
+          if (possibleDuplicates.length > 0) {
+            duplicates.push({
+              parsedTransaction: parsedTx,
+              existingTransactions: possibleDuplicates
+            });
+          } else {
+            newTransactions.push(parsedTx);
+          }
+        }
+        
+        // Informar sobre duplicados encontrados
+        if (duplicates.length > 0) {
+          console.log(`Se encontraron ${duplicates.length} posibles transacciones duplicadas.`);
+          setUploadWarnings(warnings => [
+            ...warnings,
+            `Se omitieron ${duplicates.length} transacciones por ser posibles duplicados.`
+          ]);
+          
+          // Opcionalmente podrías mostrar los duplicados en la interfaz para que el usuario decida
+          toast({ 
+            title: "Duplicados detectados", 
+            description: `Se omitieron ${duplicates.length} transacciones que parecen estar ya registradas.`, 
+            variant: "default" 
+          });
+        }
+        
+        // Continuar solo con las transacciones nuevas
+        console.log(`Procediendo a importar ${newTransactions.length} transacciones nuevas.`);
+        
+        // Si no hay transacciones nuevas después de filtrar duplicados
+        if (newTransactions.length === 0) {
+          toast({ 
+            title: "No hay transacciones nuevas", 
+            description: "Todas las transacciones ya existían en el sistema.", 
+            variant: "default" 
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Guardar solo las transacciones que no son duplicadas
+        newTransactions.forEach((parsedTx) => {
+          const transactionDocRef = doc(transactionsCollectionRef);
+          const transactionDataToSave: Omit<Transaction, 'id'> = {
+            companyId: activeCompanyId,
+            accountId: accountId,
+            date: Timestamp.fromDate(new Date(parsedTx.date)),
+            description: parsedTx.description,
+            amount: parsedTx.amount,
+            type: parsedTx.type,
+            originalFileName: file.name,
+            importedAt: serverTimestamp() as Timestamp,
+          };
+          batch.set(transactionDocRef, transactionDataToSave);
+        });
+        
+        await batch.commit();
+        toast({ 
+          title: "Éxito", 
+          description: `${newTransactions.length} transacciones importadas de "${file.name}". ${duplicates.length > 0 ? 
+            `${duplicates.length} transacciones omitidas por ser duplicadas.` : ''} ${result.warnings && result.warnings.length > 0 ? 
+            `${result.warnings.length} advertencias.` : ''}` 
+        });
+        
+        // Update account balance con las nuevas transacciones
+        try {
+          let newBalance = account.balance;
+          newTransactions.forEach(tx => newBalance += tx.amount);
+          const accountDocRef = doc(db, 'bankAccounts', accountId);
+          await updateDoc(accountDocRef, { balance: newBalance, updatedAt: serverTimestamp() });
+          refreshActiveCompanyDetails(); 
+        } catch (balanceError: any) {
+          console.error("Error updating account balance:", balanceError);
+          toast({ title: "Advertencia", description: `Transacciones importadas, pero hubo un error al actualizar el saldo de la cuenta: ${balanceError.message}`, variant: "default" });
+        }
+        
+        router.push(`/dashboard/transacciones?accountId=${accountId}`);
+      
+      } catch (error: any) {
+        console.error("Error al verificar duplicados:", error);
+        toast({ 
+          title: "Error al verificar duplicados", 
+          description: "Ocurrió un error al verificar duplicados. Se procederá sin esta verificación.", 
+          variant: "destructive" 
+        });
+        
+        // Continuar con la importación normal si falla la verificación de duplicados
+        parsedTransactions.forEach((parsedTx) => {
+          const transactionDocRef = doc(transactionsCollectionRef);
+          const transactionDataToSave: Omit<Transaction, 'id'> = {
+            companyId: activeCompanyId,
+            accountId: accountId,
+            date: Timestamp.fromDate(new Date(parsedTx.date)),
+            description: parsedTx.description,
+            amount: parsedTx.amount,
+            type: parsedTx.type,
+            originalFileName: file.name,
+            importedAt: serverTimestamp() as Timestamp,
+          };
+          batch.set(transactionDocRef, transactionDataToSave);
+        });
+        
+        await batch.commit();
+        toast({ title: "Éxito", description: `${parsedTransactions.length} transacciones importadas de "${file.name}". ${result.warnings && result.warnings.length > 0 ? `${result.warnings.length} advertencias.` : ''}` });
+        
+        // Update account balance
+        try {
+          let newBalance = account.balance;
+          parsedTransactions.forEach(tx => newBalance += tx.amount);
+          const accountDocRef = doc(db, 'bankAccounts', accountId);
+          await updateDoc(accountDocRef, { balance: newBalance, updatedAt: serverTimestamp() });
+          refreshActiveCompanyDetails(); 
+        } catch (balanceError: any) {
+          console.error("Error updating account balance:", balanceError);
+          toast({ title: "Advertencia", description: `Transacciones importadas, pero hubo un error al actualizar el saldo de la cuenta: ${balanceError.message}`, variant: "default" });
+        }
+        
+        router.push(`/dashboard/transacciones?accountId=${accountId}`);
       }
-
-      router.push(`/dashboard/transacciones?accountId=${accountId}`);
 
     } catch (error: any) {
       console.error("Error crítico durante la importación o guardado en Firestore:", error);

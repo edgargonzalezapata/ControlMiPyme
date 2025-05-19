@@ -1,5 +1,5 @@
-
 "use server";
+
 import { auth } from '@/lib/firebase';
 import { db } from '@/lib/firestore';
 import type { Company, UserRole } from '@/lib/types';
@@ -31,6 +31,7 @@ export async function createCompany(name: string, ownerUid: string): Promise<{ i
       members: {
         [ownerUid]: 'admin' as UserRole,
       },
+      currency: 'CLP', // Default currency for Chilean peso
       createdAt: serverTimestamp() as any,
       updatedAt: serverTimestamp() as any,
     };
