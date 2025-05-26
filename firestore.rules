@@ -58,6 +58,56 @@ service cloud.firestore {
                      getCompanyOwnerId(resource.data.companyId) == request.auth.uid;
     }
     
+    // Servicios Recurrentes
+    match /recurringServices/{serviceId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                     getCompanyOwnerId(request.resource.data.companyId) == request.auth.uid;
+                     
+      allow update: if isAuthenticated() && 
+                     getCompanyOwnerId(resource.data.companyId) == request.auth.uid;
+                     
+      allow delete: if isAuthenticated() && 
+                     getCompanyOwnerId(resource.data.companyId) == request.auth.uid;
+    }
+    
+    // Facturaciones de Servicios
+    match /serviceBillings/{billingId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                     getCompanyOwnerId(request.resource.data.companyId) == request.auth.uid;
+                     
+      allow update: if isAuthenticated() && 
+                     getCompanyOwnerId(resource.data.companyId) == request.auth.uid;
+                     
+      allow delete: if isAuthenticated() && 
+                     getCompanyOwnerId(resource.data.companyId) == request.auth.uid;
+    }
+    
+    // Facturas (Invoices)
+    match /facturas/{facturaId} {
+      // PERMITIR LEER: si el usuario está autenticado
+      allow read: if isAuthenticated();
+      
+      // PERMITIR CREAR: si el usuario está autenticado y es el propietario de la empresa
+      allow create: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     request.resource.data.empresaId != null &&
+                     getCompanyOwnerId(request.resource.data.empresaId) == request.auth.uid;
+                     
+      // PERMITIR ACTUALIZAR: si el usuario es propietario de la empresa de la factura
+      allow update: if isAuthenticated() && 
+                     resource.data.empresaId != null &&
+                     getCompanyOwnerId(resource.data.empresaId) == request.auth.uid;
+                     
+      // PERMITIR BORRAR: si el usuario es propietario de la empresa de la factura
+      allow delete: if isAuthenticated() && 
+                     resource.data.empresaId != null &&
+                     getCompanyOwnerId(resource.data.empresaId) == request.auth.uid;
+    }
+    
     // Regla para permitir a los usuarios leer cualquier documento
     // Esto hace más sencilla la depuración en desarrollo
     match /{document=**} {

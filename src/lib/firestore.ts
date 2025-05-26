@@ -1,5 +1,5 @@
-import { app } from './firebase'; // Assuming app is correctly initialized here
-import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
+import { app } from './firebase';
+import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 // Add TypeScript declaration for the global variable
 declare global {
@@ -8,64 +8,72 @@ declare global {
   }
 }
 
-// Define the database with proper typing
-let db: Firestore | null = null;
+// Variable para almacenar la instancia de Firestore
+let firestoreDb: Firestore | null = null;
 
-// Add backup check for app from global
-const getApp = () => {
-  if (app) return app;
-  if (typeof window !== 'undefined' && window.__FIREBASE_APP__) {
-    console.log('Firestore: Using Firebase app from global variable');
-    return window.__FIREBASE_APP__;
+/**
+ * Función para inicializar Firestore
+ * Esta función solo debe ejecutarse en el lado del cliente
+ */
+function initializeFirestore(): Firestore | null {
+  // Si no estamos en el cliente, no inicializar
+  if (typeof window === 'undefined') {
+    return null;
   }
-  return null;
-};
+  
+  // Si ya tenemos una instancia, devolverla
+  if (firestoreDb) {
+    return firestoreDb;
+  }
+  
+  // Si no hay app de Firebase, no podemos inicializar Firestore
+  if (!app) {
+    console.error('Firestore: Firebase App is not initialized. Firestore will not be available. Check .env.local file and Firebase configuration.');
+    return null;
+  }
 
-const firebaseApp = getApp();
-
-if (firebaseApp) {
-  console.log('Firestore: Attempting to initialize with Firebase app', firebaseApp);
-  // Check if Firestore is already initialized, common in HMR scenarios
   try {
-    db = getFirestore(firebaseApp);
-    console.log('Firestore: Initialized successfully via getFirestore');
-    // Store in window for debugging
-    if (typeof window !== 'undefined') {
-      window.__FIRESTORE_DB__ = db;
-    }
-  } catch (e) {
-    // Initialize Firestore if not already done.
-    // This might happen if getFirestore(app) is called before initializeFirestore in some environments.
-    // Adjust as per your specific Firebase SDK version and setup.
-    // For modular SDK v9+, initializeFirestore is more for specific settings like persistence.
-    // getFirestore(app) should generally suffice.
-    console.warn("Firestore: Instance not found, attempting to initialize with initializeFirestore.", e);
-    try {
-      db = initializeFirestore(firebaseApp, {
-        // Optional settings:
-        // localCache: persistentLocalCache(/* settings */)
-      });
-      console.log('Firestore: Initialized successfully via initializeFirestore');
-      // Store in window for debugging
-      if (typeof window !== 'undefined') {
-        window.__FIRESTORE_DB__ = db;
+    // Inicializar Firestore
+    firestoreDb = getFirestore(app);
+    console.log('Firestore: Initialized successfully');
+    
+    // Conectar al emulador en desarrollo si está configurado
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIRESTORE_EMULATOR === 'true') {
+      try {
+        const host = process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST || 'localhost';
+        const port = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || '8080');
+        connectFirestoreEmulator(firestoreDb, host, port);
+        console.log(`Firestore: Connected to emulator at ${host}:${port}`);
+      } catch (emulatorError) {
+        console.warn('Firestore: Failed to connect to emulator:', emulatorError);
       }
-    } catch (initError) {
-      console.error("Firestore: Failed to initialize:", initError);
-      db = null; // Explicitly set to null if initialization fails
     }
+    
+    // Almacenar en variable global para depuración
+    if (typeof window !== 'undefined') {
+      window.__FIRESTORE_DB__ = firestoreDb;
+    }
+    
+    return firestoreDb;
+  } catch (error) {
+    console.error('Firestore: Error initializing:', error);
+    return null;
   }
-} else {
-  console.warn("Firestore: Firebase App is not initialized. Firestore will not be available. Check .env.local file and Firebase configuration.");
-  db = null; // Firestore is not available if Firebase app isn't initialized
 }
 
-if (!db && firebaseApp && process.env.NODE_ENV !== 'test') {
-    // This warning is a bit redundant if `app` itself is null, handled above.
-    // More relevant if `app` exists but `getFirestore(app)` failed silently or returned something falsy.
-    console.error("Firestore: Could not be initialized. Check your Firebase config and SDK setup.");
-} else if (db) {
-    console.log('Firestore: Instance is ready to use');
-}
+// Exportar la instancia de Firestore
+// Solo inicializar en el lado del cliente
+export const db = typeof window !== 'undefined' ? initializeFirestore() : null;
 
-export { db };
+/**
+ * Función para verificar si Firestore está disponible
+ * @returns true si Firestore está disponible, false en caso contrario
+ */
+export function isFirestoreAvailable(): boolean {
+  console.log('Verificando disponibilidad de Firestore, db:', db);
+  if (!db) {
+    console.error('Firestore no está disponible. Verifica la configuración de Firebase.');
+    return false;
+  }
+  return true;
+}

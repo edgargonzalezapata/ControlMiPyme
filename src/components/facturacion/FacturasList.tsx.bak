@@ -1,0 +1,197 @@
+'use client';
+
+import { useState } from 'react';
+import { FacturaConEstado, EstadoFactura } from '@/types/factura';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { FileText, CheckCircle2, Clock, XCircle, AlertCircle, Trash2, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+
+interface FacturasListProps {
+  facturas: FacturaConEstado[];
+  onFacturaClick?: (factura: FacturaConEstado) => void;
+  onEliminarFactura?: (factura: FacturaConEstado) => void;
+  showEmisor?: boolean;
+}
+
+const estadoConfig: Record<EstadoFactura, {
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  label: string;
+}> = {
+  pendiente: {
+    icon: Clock,
+    color: 'bg-yellow-100 text-yellow-800',
+    label: 'Pendiente'
+  },
+  pagada: {
+    icon: CheckCircle2,
+    color: 'bg-green-100 text-green-800',
+    label: 'Pagada'
+  },
+  vencida: {
+    icon: AlertCircle,
+    color: 'bg-red-100 text-red-800',
+    label: 'Vencida'
+  },
+  anulada: {
+    icon: XCircle,
+    color: 'bg-gray-100 text-gray-800',
+    label: 'Anulada'
+  },
+  rechazada: {
+    icon: XCircle,
+    color: 'bg-red-100 text-red-800',
+    label: 'Rechazada'
+  },
+  enviada: {
+    icon: CheckCircle2,
+    color: 'bg-blue-100 text-blue-800',
+    label: 'Enviada'
+  }
+};
+
+export function FacturasList({ facturas, onFacturaClick, onEliminarFactura, showEmisor = false }: FacturasListProps) {
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  
+  const handleEliminarClick = async (e: React.MouseEvent, factura: FacturaConEstado) => {
+    e.stopPropagation();
+    if (!onEliminarFactura || !factura.id) return;
+    
+    try {
+      setIsDeleting(factura.id);
+      await onEliminarFactura(factura);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+  
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+      return format(date, 'dd MMM yyyy', { locale: es });
+    } catch (error) {
+      console.error('Error formateando fecha:', error);
+      return 'Fecha inválida';
+    }
+  };
+  if (facturas.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <FileText className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-sm font-medium text-gray-900">No hay facturas</h3>
+        <p className="mt-1 text-sm text-gray-500">
+          {facturas.length === 0 ? 'No se encontraron facturas.' : 'Comienza importando facturas para verlas aquí.'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Facturas</CardTitle>
+            <CardDescription>
+              Lista de facturas importadas
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="ml-2">
+            {facturas.length} {facturas.length === 1 ? 'factura' : 'facturas'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Folio</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>{showEmisor ? 'Emisor' : 'Receptor'}</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="w-12">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {facturas.map((factura) => {
+                const EstadoIcon = estadoConfig[factura.estado]?.icon || FileText;
+                const estadoColor = estadoConfig[factura.estado]?.color || 'bg-gray-100 text-gray-800';
+                const estadoLabel = estadoConfig[factura.estado as keyof typeof estadoConfig]?.label || 'Desconocido';
+
+                return (
+                  <TableRow 
+                    key={`${factura.tipoDTE}-${factura.folio}`}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => onFacturaClick?.(factura)}
+                  >
+                    <TableCell className="font-medium">
+                      {factura.folio || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {formatDate(factura.fechaEmision)}
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={showEmisor ? (factura.razonSocialEmisor || factura.rutEmisor) : (factura.razonSocialReceptor || factura.rutReceptor)}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{showEmisor ? (factura.razonSocialEmisor || 'Sin nombre') : (factura.razonSocialReceptor || 'Sin nombre')}</span>
+                        <span className="text-xs text-muted-foreground">{showEmisor ? (factura.rutEmisor || 'Sin RUT') : (factura.rutReceptor || 'Sin RUT')}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${factura.montoTotal ? factura.montoTotal.toLocaleString('es-CL') : '0'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        className={`${estadoColor} hover:${estadoColor} flex items-center gap-1`}
+                        title={factura.notas}
+                      >
+                        <EstadoIcon className="h-3 w-3" />
+                        {estadoLabel}
+                      </Badge>
+                      {factura.fechaVencimiento && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Vence: {formatDate(factura.fechaVencimiento)}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        {onEliminarFactura && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleEliminarClick(e, factura);
+                            }}
+                            disabled={isDeleting === factura.id}
+                          >
+                            {isDeleting === factura.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default FacturasList;

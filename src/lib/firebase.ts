@@ -5,87 +5,134 @@ import { getAuth, Auth } from "firebase/auth";
 declare global {
   interface Window {
     __FIREBASE_APP__?: FirebaseApp;
+    __FIREBASE_CONFIG__?: any;
   }
 }
 
-// Firebase app instance with proper typing
-let app: FirebaseApp | null = null;
-
-// Function to clean environment variables from extra quotes
-const cleanEnvValue = (value: string | undefined): string | undefined => {
-  if (!value) return undefined;
-  // Remove surrounding quotes if they exist
-  return value.replace(/^["'](.*)["']$/, '$1');
+// Configuración predeterminada de Firebase
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDOQWd-V--A0lg6_DK6zhgLsvAIEdL6Cd8",
+  authDomain: "controlmipyme.firebaseapp.com",
+  projectId: "controlmipyme",
+  storageBucket: "controlmipyme.appspot.com",
+  messagingSenderId: "144622112570",
+  appId: "1:144622112570:web:5ae937bebf7ba2b7348a03"
 };
 
-// Initialize Firebase only on client side and only once
-if (typeof window !== 'undefined') {
+// Variable para almacenar la instancia de Firebase
+let firebaseApp: FirebaseApp | null = null;
+
+// Función para obtener la configuración de Firebase
+function getFirebaseConfig() {
+  // Si estamos en el navegador y ya tenemos la configuración guardada, usarla
+  if (typeof window !== 'undefined' && window.__FIREBASE_CONFIG__) {
+    return window.__FIREBASE_CONFIG__;
+  }
+  
+  // Obtener configuración de las variables de entorno
+  const config = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  };
+
+  // Verificar que todos los valores requeridos estén presentes
+  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+  const missingFields = requiredFields.filter(field => !config[field]);
+
+  if (missingFields.length > 0) {
+    console.error('Firebase: Missing required configuration fields:', missingFields);
+    throw new Error(`Firebase configuration is missing required fields: ${missingFields.join(', ')}`);
+  }
+
+  // Guardar la configuración en el objeto window para futuras referencias
+  if (typeof window !== 'undefined') {
+    window.__FIREBASE_CONFIG__ = config;
+  }
+  
+  return config;
+}
+
+// Función para inicializar Firebase
+function initializeFirebase() {
+  // Solo inicializar en el lado del cliente
+  if (typeof window === 'undefined') {
+    console.log('Firebase: Skipping initialization in server-side rendering');
+    return null;
+  }
+  
+  // Si ya tenemos una instancia, devolverla
+  if (firebaseApp) {
+    return firebaseApp;
+  }
+
   try {
+    // Verificar si ya hay aplicaciones inicializadas
     const existingApps = getApps();
     console.log("Firebase: Checking existing apps:", existingApps.length);
     
-    if (existingApps.length === 0) {
-      // TEMPORARY: Hard-coded config for development
-      // IMPORTANT: In production, use environment variables
-      const firebaseConfig = {
-        apiKey: "AIzaSyDOQWd-V--A0lg6_DK6zhgLsvAIEdL6Cd8",
-        authDomain: "controlmipyme.firebaseapp.com",
-        projectId: "controlmipyme",
-        storageBucket: "controlmipyme.appspot.com",
-        messagingSenderId: "144622112570",
-        appId: "1:144622112570:web:5ae937bebf7ba2b7348a03"
-      };
-
-      console.log("Firebase: Config ready with values:", { 
-        hasApiKey: !!firebaseConfig.apiKey,
-        hasAuthDomain: !!firebaseConfig.authDomain,
-        hasProjectId: !!firebaseConfig.projectId,
-        hasStorageBucket: !!firebaseConfig.storageBucket,
-        hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
-        hasAppId: !!firebaseConfig.appId
-      });
-
-      if (!firebaseConfig.apiKey) {
-        console.warn('Firebase API Key is missing. Firebase will not be initialized.');
-      } else {
-        // Initialize Firebase with wrapped error logging
-        try {
-          app = initializeApp(firebaseConfig);
-          window.__FIREBASE_APP__ = app; // Store in global for debugging
-          console.log('Firebase initialized successfully:', !!app);
-        } catch (initErr) {
-          console.error('Firebase initialization internal error:', initErr);
-          app = null;
-        }
-      }
-    } else {
-      // Use the existing app instance
-      app = existingApps[0];
-      window.__FIREBASE_APP__ = app; // Store in global for debugging
-      console.log('Using existing Firebase app instance');
+    if (existingApps.length > 0) {
+      console.log('Firebase: Using existing app instance');
+      firebaseApp = existingApps[0];
+      return firebaseApp;
     }
+    
+    // Obtener la configuración
+    const firebaseConfig = getFirebaseConfig();
+    
+    // Verificar que la configuración sea válida
+    console.log("Firebase: Config ready with values:", { 
+      hasApiKey: !!firebaseConfig.apiKey,
+      hasAuthDomain: !!firebaseConfig.authDomain,
+      hasProjectId: !!firebaseConfig.projectId,
+      hasStorageBucket: !!firebaseConfig.storageBucket,
+      hasMessagingSenderId: !!firebaseConfig.messagingSenderId,
+      hasAppId: !!firebaseConfig.appId
+    });
+    
+    // Inicializar Firebase
+    firebaseApp = initializeApp(firebaseConfig);
+    console.log('Firebase: Initialized successfully');
+    
+    // Almacenar en variable global para depuración
+    if (typeof window !== 'undefined') {
+      window.__FIREBASE_APP__ = firebaseApp;
+    }
+    
+    return firebaseApp;
   } catch (error) {
-    console.error('Error initializing Firebase:', error);
-    app = null;
+    console.error('Firebase: Error initializing:', error);
+    return null;
   }
 }
+
+// Exportar la función de inicialización y la instancia
+export const app = typeof window !== 'undefined' ? initializeFirebase() : null;
 
 // Get auth instance with proper typing
 let auth: Auth | null = null;
+
+// Inicializar auth si app está disponible
 if (app) {
   try {
     auth = getAuth(app);
-    console.log('Firebase Auth initialized successfully:', !!auth);
+    console.log('Auth initialized successfully');
   } catch (error) {
-    console.error("Error initializing Firebase Auth:", error);
+    console.error('Error initializing Auth:', error);
     auth = null;
   }
+} else {
+  console.log('Auth: Firebase App is not initialized. Auth will not be available.');
 }
+
+// Exportar auth
+export { auth };
 
 // It's good practice to ensure auth is available before trying to use it.
 // Components using auth should check if it's null.
 if (!auth && process.env.NODE_ENV !== 'test' && app && app.options.apiKey) {
   console.error("Firebase Authentication could not be initialized. Check your Firebase config.");
 }
-
-export { app, auth };

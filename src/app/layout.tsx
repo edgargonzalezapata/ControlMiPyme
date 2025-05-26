@@ -4,8 +4,10 @@ import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthProvider';
-import { ActiveCompanyProvider } from '@/context/ActiveCompanyProvider'; // Import ActiveCompanyProvider
+import { ActiveCompanyProvider } from '@/context/ActiveCompanyProvider';
+import { ActivePeriodProvider } from '@/context/ActivePeriodProvider';
 import { ThemeProvider } from '@/context/ThemeProvider';
+import { FirebaseInitializer } from '@/components/FirebaseInitializer';
 import Script from 'next/script';
 
 const geistSans = Geist({
@@ -40,15 +42,19 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
-          <ActiveCompanyProvider>
-            <ThemeProvider>
-              <div className="flex min-h-screen flex-col">
-                <Navbar />
-                <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
-              </div>
-              <Toaster />
-            </ThemeProvider>
-          </ActiveCompanyProvider>
+          <FirebaseInitializer>
+            <ActiveCompanyProvider>
+              <ActivePeriodProvider>
+                <ThemeProvider>
+                <div className="flex min-h-screen flex-col">
+                  <Navbar />
+                  <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
+                </div>
+                <Toaster />
+              </ThemeProvider>
+              </ActivePeriodProvider>
+            </ActiveCompanyProvider>
+          </FirebaseInitializer>
         </AuthProvider>
       </body>
     </html>

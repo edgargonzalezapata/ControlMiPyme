@@ -20,7 +20,7 @@ import {
   Loader2, LayoutDashboard, Briefcase, UserCircle, Banknote, FileText, 
   Settings, ArrowLeftRight, BarChart3, LogOut, Building, ArrowLeft,
   Home, CreditCard, PieChart, TrendingUp, ChevronRight, User, HelpCircle,
-  Moon, Sun
+  Moon, Sun, Calendar
 } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useTheme } from '@/context/ThemeProvider';
+import { Upload } from 'lucide-react';
 
 // Definir tipos para los elementos de navegación
 interface NavItem {
@@ -45,6 +46,66 @@ interface NavItem {
   isPlaceholder?: boolean;
   isAdminOnly?: boolean;
 }
+
+// Componente para los elementos de navegación
+const NavItemComponent = ({ 
+  item, 
+  pathname, 
+  activeCompanyId, 
+  isCompanyContext,
+  isAdminOnly = false,
+  isUserAdmin = false
+}: {
+  item: NavItem;
+  pathname: string;
+  activeCompanyId: string | null;
+  isCompanyContext: boolean;
+  isAdminOnly?: boolean;
+  isUserAdmin?: boolean;
+}) => {
+  // Skip rendering admin-only items if user is not admin
+  if (isAdminOnly && !isUserAdmin) return null;
+  
+  // Skip items that require an active company if no company is active
+  if (item.requiresActiveCompany && !activeCompanyId && !isCompanyContext) return null;
+
+  return (
+    <SidebarMenuItem key={item.href}>
+      <Link href={item.href} passHref legacyBehavior>
+        <SidebarMenuButton
+          isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
+          disabled={!!item.isPlaceholder}
+          className={`
+            group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200
+            ${pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-medium'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300'}
+            ${item.isPlaceholder ? 'opacity-60' : ''}
+          `}
+        >
+          <span className={`
+            flex h-5 w-5 shrink-0 items-center justify-center rounded-md 
+            ${pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 dark:group-hover:bg-indigo-900 dark:group-hover:text-indigo-300'}
+          `}>
+            <item.icon className="h-3.5 w-3.5" />
+          </span>
+          <span className="flex-1 truncate">{item.label}</span>
+          {item.isPlaceholder && <span className="text-xs text-gray-500 dark:text-gray-500 ml-auto">(Próx.)</span>}
+          {!item.isPlaceholder && (
+            <ChevronRight className={`
+              h-3.5 w-3.5 shrink-0 ml-auto opacity-0 transition-opacity duration-200
+              ${pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+                ? 'opacity-100 text-indigo-600 dark:text-indigo-400'
+                : 'group-hover:opacity-100 text-gray-400 dark:text-gray-500'}
+            `} />
+          )}
+        </SidebarMenuButton>
+      </Link>
+    </SidebarMenuItem>
+  );
+};
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, isFirebaseReady } = useAuthContext();
@@ -139,18 +200,33 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   const userInitials = user?.displayName ? user.displayName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : <UserCircle size={18}/>;
   
-  // Define menu items with improved structure and icons
+  // Define menu items organized by sections
+  const configuracionItems: NavItem[] = [
+    { href: '/dashboard/empresas', label: 'Empresas', icon: Briefcase, description: 'Gestionar empresas' },
+    { href: '/dashboard/periodo', label: 'Periodo', icon: Calendar, description: 'Configurar mes y año activos' },
+    { href: '/dashboard/perfil', label: 'Mi Perfil', icon: UserCircle, description: 'Configuración de usuario personal' },
+  ];
+
+  const finanzasItems: NavItem[] = [
+    { href: '/dashboard/cuentas', label: 'Bancos', icon: Banknote, requiresActiveCompany: true, description: 'Gestión de cuentas bancarias' },
+    { href: '/dashboard/transacciones', label: 'Transacciones', icon: ArrowLeftRight, requiresActiveCompany: true, description: 'Registro de movimientos' },
+    { href: '/dashboard/cartolas', label: 'Cargar Cartolas', icon: FileText, requiresActiveCompany: true, description: 'Importar cartolas bancarias' },
+    { href: '/dashboard/reportes', label: 'Reportes', icon: PieChart, requiresActiveCompany: true, isPlaceholder: true, description: 'Análisis financiero' },
+  ];
+
+  const facturacionItems: NavItem[] = [
+    { href: '/dashboard/facturacion/dashboard', label: 'Dashboard', icon: BarChart3, requiresActiveCompany: true, description: 'Resumen de facturación' },
+    { href: '/dashboard/facturacion/lista', label: 'Facturas Emitidas', icon: FileText, requiresActiveCompany: true, description: 'Ver y gestionar facturas emitidas' },
+    { href: '/dashboard/facturacion/recibidas', label: 'Facturas Recibidas', icon: FileText, requiresActiveCompany: true, description: 'Ver y gestionar facturas recibidas' },
+    { href: '/dashboard/servicios-recurrentes', label: 'Servicios Recurrentes', icon: Calendar, requiresActiveCompany: true, description: 'Facturación mensual automática' },
+  ];
+
   const baseNavItems: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, requiresActiveCompany: true, description: 'Vista general de la empresa' },
-    { href: '/dashboard/cuentas', label: 'Cuentas', icon: CreditCard, requiresActiveCompany: true, description: 'Gestión de cuentas bancarias' },
-    { href: '/dashboard/transacciones', label: 'Transacciones', icon: ArrowLeftRight, requiresActiveCompany: true, description: 'Registro de movimientos' },
-    { href: '/dashboard/reportes', label: 'Reportes', icon: PieChart, requiresActiveCompany: true, isPlaceholder: true, description: 'Análisis financiero' },
-    { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings, requiresActiveCompany: true, isAdminOnly: true, description: 'Ajustes de empresa' },
   ];
 
   const managementNavItems: NavItem[] = [
-     { href: '/dashboard/empresas', label: 'Mis Empresas', icon: Briefcase, description: 'Gestionar todas tus empresas' },
-     { href: '/dashboard/perfil', label: 'Mi Perfil', icon: User, description: 'Configuración de usuario' },
+    { href: '/dashboard/empresas', label: 'Mis Empresas', icon: Briefcase, description: 'Gestionar todas tus empresas' },
   ];
 
   let currentNavItems: NavItem[];
@@ -230,46 +306,50 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
             {/* Sidebar Content with Navigation */}
             <SidebarContent className="p-3">
-              <div className="mb-2">
+              {/* Dashboard Section */}
+              <div className="mb-4">
                 <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 mb-1.5">
-                  {isCompanyContext ? 'Navegación' : 'General'}
+                  Panel Principal
                 </p>
                 <SidebarMenu>
-                  {currentNavItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <Link href={item.href} passHref legacyBehavior>
-                        <SidebarMenuButton
-                          isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                          disabled={!!item.isPlaceholder || (!!item.requiresActiveCompany && !activeCompanyId && !isCompanyContext)}
-                          className={`
-                            group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-200
-                            ${pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
-                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-medium'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300'}
-                            ${item.isPlaceholder ? 'opacity-60' : ''}
-                          `}
-                        >
-                          <span className={`
-                            flex h-5 w-5 shrink-0 items-center justify-center rounded-md 
-                            ${pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 dark:group-hover:bg-indigo-900 dark:group-hover:text-indigo-300'}
-                          `}>
-                            <item.icon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="flex-1 truncate">{item.label}</span>
-                          {item.isPlaceholder && <span className="text-xs text-gray-500 dark:text-gray-500 ml-auto">(Próx.)</span>}
-                          {!item.isPlaceholder && (
-                            <ChevronRight className={`
-                              h-3.5 w-3.5 shrink-0 ml-auto opacity-0 transition-opacity duration-200
-                              ${pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
-                                ? 'opacity-100 text-indigo-600 dark:text-indigo-400'
-                                : 'group-hover:opacity-100 text-gray-400 dark:text-gray-500'}
-                            `} />
-                          )}
-                        </SidebarMenuButton>
-                      </Link>
-                    </SidebarMenuItem>
+                  {baseNavItems.map((item) => (
+                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} />
+                  ))}
+                </SidebarMenu>
+              </div>
+
+              {/* Finanzas Section */}
+              <div className="mb-4">
+                <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                  Finanzas
+                </p>
+                <SidebarMenu>
+                  {finanzasItems.map((item) => (
+                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} isAdminOnly={item.isAdminOnly} isUserAdmin={isUserAdminOfActiveCompany} />
+                  ))}
+                </SidebarMenu>
+              </div>
+
+              {/* Facturación Section */}
+              <div className="mb-4">
+                <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                  Facturación
+                </p>
+                <SidebarMenu>
+                  {facturacionItems.map((item) => (
+                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} isAdminOnly={item.isAdminOnly} isUserAdmin={isUserAdminOfActiveCompany} />
+                  ))}
+                </SidebarMenu>
+              </div>
+
+              {/* Configuración Section */}
+              <div className="mb-4">
+                <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                  Configuración
+                </p>
+                <SidebarMenu>
+                  {configuracionItems.map((item) => (
+                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} isAdminOnly={item.isAdminOnly} isUserAdmin={isUserAdminOfActiveCompany} />
                   ))}
                 </SidebarMenu>
               </div>

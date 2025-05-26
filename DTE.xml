@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<SetDTE>
+<DTE version="1.0" >
+  <!-- O Win32 Chrome 136 central VERSION: v20190409 -->
+<Documento ID="MiPE77465778-5183">
+    <Encabezado>
+      <IdDoc>
+        <TipoDTE>33</TipoDTE>
+        <Folio>347</Folio>
+        <FchEmis>2025-05-22</FchEmis>
+        <TpoTranCompra>1</TpoTranCompra>
+        <TpoTranVenta>1</TpoTranVenta>
+        <FmaPago>2</FmaPago>
+      </IdDoc>
+      <Emisor>
+        <RUTEmisor>77465778-9</RUTEmisor>
+        <RznSoc>SOLUCIONES INFORMÁTICAS BIO BIO SPA</RznSoc>
+        <GiroEmis>SOPORTE Y SERVICIOS INFORMATICOS. VENTA DE INSUMOS COMPUTACIONALES.</GiroEmis>
+        <CorreoEmisor>contacto@sibb.cl</CorreoEmisor>
+        <Acteco>620200</Acteco>
+        <CdgSIISucur>87386011</CdgSIISucur>
+        <DirOrigen>RIO CLARO 952 LT 2</DirOrigen>
+        <CmnaOrigen>CABRERO</CmnaOrigen>
+        <CiudadOrigen>CABRERO</CiudadOrigen>
+      </Emisor>
+      <Receptor>
+        <RUTRecep>96960670-4</RUTRecep>
+        <RznSocRecep>MECHARV S A</RznSocRecep>
+        <GiroRecep>TRANSPORTE DE CARGA POR CARRETERA</GiroRecep>
+        <DirRecep>LONGITUDINAL SUR KM.500   SECTOR LOS TILOS</DirRecep>
+        <CmnaRecep>LOS ANGELES</CmnaRecep>
+        <CiudadRecep>LOS ANGELES</CiudadRecep>
+      </Receptor>
+    <Transporte>
+  </Transporte>
+      <Totales>
+        <MntNeto>220000</MntNeto>
+        <TasaIVA>19.00</TasaIVA>
+        <IVA>41800</IVA>
+        <MntTotal>261800</MntTotal>
+      </Totales>
+    </Encabezado>
+    <Detalle>
+      <NroLinDet>1</NroLinDet>
+      <NmbItem>Soporte Informático</NmbItem>
+      <DscItem>Servicio de transmisión de datos
+KIT
+- 50708b85-0720721b-9812a78f
+- 01000000-00000000-0018ace3</DscItem>
+      <QtyItem>2.00</QtyItem>
+      <PrcItem>110000.00</PrcItem>
+      <MontoItem>220000</MontoItem>
+    </Detalle>
+<TED version="1.0"><DD><RE>77465778-9</RE><TD>33</TD><F>347</F><FE>2025-05-22</FE><RR>96960670-4</RR><RSR>MECHARV S A</RSR><MNT>261800</MNT><IT1>Soporte Informático</IT1><CAF version="1.0"><DA><RE>77465778-9</RE><RS>SOLUCIONES INFORMÁTICAS BIO BIO SPA</RS><TD>33</TD><RNG><D>347</D><H>347</H></RNG><FA>2025-05-22</FA><RSAPK><M>3a1gZw6LNp7pg9N304wU+PQtuWyu3Ov835FAtcwaMw9gGiINut8gvgsxN0c5WdCOEyiWQ9EiCNZzoPlHnEXOgw==</M><E>Aw==</E></RSAPK><IDK>300</IDK></DA><FRMA algoritmo="SHA1withRSA">aMkGjUyyInbnk2RUzcld+iSnrPDPsJ9s4ZOC7Y5w57IgyZGQS4Hrm7+vw2k17weeSbnDPS08KVmbogxdQRGHrQ==</FRMA></CAF><TSTED>2025-05-22T11:05:22</TSTED></DD><FRMT algoritmo="SHA1withRSA">CAEEEkOFmy8cogteLE7Ml2C+FuVHv7HBPp4j8nygHibNlWfdzxFUIIzgDsrSqhIi4/ym5fpigWyUeHJeKUR2kg==</FRMT></TED>
+    <TmstFirma>2025-05-22T11:05:22</TmstFirma>
+
+  </Documento>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+<SignedInfo>
+<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<Reference URI="#MiPE77465778-5183">
+<Transforms>
+<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+</Transforms>
+<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<DigestValue>8xu1206Cd1L66OK6O+pZTQ/GQgc=</DigestValue>
+</Reference>
+</SignedInfo>
+<SignatureValue>
+0n+soCcIw82OO2W4+PcblE3v/v3x54Pngvsn5SR75yEFEBn2KS57fI+N7zMkD/KVHEoaie5ll6lB
+U6yenWVAEQ8dfIJcdq06x6RaJlOfLKyVjmEuZGmrKs+gPYEodcrJhhd3JqXfT2mDZbR+2GPjEVqR
+cyLNloxuQoBGiVidBbkS8p4N3tXNlkOIfq4PAc5AU8un7eJ9p8JCrX/0KjOQLLoOVGJj4cj3bn3f
+spWFw8ur6l9n+dX1wTqRJ0X9/PhhJVrhWldnb3P1kpxYjyq4gzzQVLoumujyVZM335qOA73VjUiO
+AnqasNXXdz/xaH/CRe4dZI8iQeokGHJPzNmZCw==
+</SignatureValue>
+<KeyInfo>
+<KeyValue>
+<RSAKeyValue>
+<Modulus>
+3dz2ujz1QblXv5T0LNCW9Bi9pOeaT1uHarXuqMjDcgUIuPVt5ah6WkS0Xolj9xaS6UhY+hLyofLi
+QkOJDGrJepO2W7l1Hw3F2LHcXqwundzEuyGECE4x6Hn5ano8gXB5rMc52ZMjbV9Jy5zk9JJdEV1l
+goB62qgO9RsbETZulHQo6PMlKuDlNEM0RK6IPjCySC59sPoJ8YqtdCzJdi4B2CQNKCwkd4aja1Ze
+vkPagJ1gAp3FHA/wV62gLSWMxzzMUQum5d2UAHuZfN3+VUjnIAa74JEnyPp1VKQ6z00wqD7hRR0l
+DdxPDC3jLgr0NU8n9L6A01H5+DQwSyvWuQzn6w==
+</Modulus>
+<Exponent>AQAB</Exponent>
+</RSAKeyValue>
+</KeyValue>
+<X509Data>
+<X509Certificate>
+MIIGVTCCBT2gAwIBAgIIX0HAvKZR1PwwDQYJKoZIhvcNAQELBQAwga8xCzAJBgNVBAYTAkNMMRQw
+EgYDVQQKDAtFLVNpZ24gUy5BLjE5MDcGA1UECwwwVGVybXMgb2YgdXNlIGF0IHd3dy5lc2lnbi1s
+YS5jb20vYWN1ZXJkb3RlcmNlcm9zMSswKQYDVQQDDCJFLVNpZ24gQ2xhc3MgMiBGaXJtYSBUcmli
+dXRhcmlhIENBMSIwIAYJKoZIhvcNAQkBFhNlLXNpZ25AZXNpZ24tbGEuY29tMB4XDTI1MDIxMTE2
+NDkwMFoXDTI2MDIxMTE2NDkwMFowgbQxCzAJBgNVBAYTAkNMMRQwEgYDVQQKDAtFLVNpZ24gUy5B
+LjE5MDcGA1UECwwwVGVybXMgb2YgdXNlIGF0IHd3dy5lc2lnbi1sYS5jb20vYWN1ZXJkb3RlcmNl
+cm9zMScwJQYDVQQDDB5FREdBUiBIVU1CRVJUTyBHT05aQUxFWiBaQVBBVEExKzApBgkqhkiG9w0B
+CQEWHGVkZ2FyZ29uemFsZXphcGF0YUBnbWFpbC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
+ggEKAoIBAQDd3Pa6PPVBuVe/lPQs0Jb0GL2k55pPW4dqte6oyMNyBQi49W3lqHpaRLReiWP3FpLp
+SFj6EvKh8uJCQ4kMasl6k7ZbuXUfDcXYsdxerC6d3MS7IYQITjHoeflqejyBcHmsxznZkyNtX0nL
+nOT0kl0RXWWCgHraqA71GxsRNm6UdCjo8yUq4OU0QzRErog+MLJILn2w+gnxiq10LMl2LgHYJA0o
+LCR3hqNrVl6+Q9qAnWACncUcD/BXraAtJYzHPMxRC6bl3ZQAe5l83f5VSOcgBrvgkSfI+nVUpDrP
+TTCoPuFFHSUN3E8MLeMuCvQ1Tyf0voDTUfn4NDBLK9a5DOfrAgMBAAGjggJsMIICaDCBgAYIKwYB
+BQUHAQEEdDByMEoGCCsGAQUFBzAChj5odHRwOi8vcGtpLmVzaWduLWxhLmNvbS9jYWNlcnRzL3Br
+aUNsYXNzMkZpcm1hVHJpYnV0YXJpYUNBLmNydDAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuZXNp
+Z24tbGEuY29tMB0GA1UdDgQWBBQCo2L2Ko04tLqvZjXsSTzj+Dd+OTAMBgNVHRMBAf8EAjAAMB8G
+A1UdIwQYMBaAFPlK+sLHbsLnEpxXRTWEGm0o6UqkMIHIBgNVHSAEgcAwgb0wgboGDCsGAQQBgspq
+AQQBAjCBqTB+BggrBgEFBQcCAjByHnAAQwBlAHIAdABpAGYAaQBjAGEAZABvACAAcABhAHIAYQAg
+AHUAcwBvACAAVAByAGkAYgB1AHQAYQByAGkAbwAsACAAQwBvAG0AZQByAGMAaQBvACwAIABQAGEA
+ZwBvAHMAIAB5ACAATwB0AHIAbwBzMCcGCCsGAQUFBwIBFhtodHRwOi8vd3d3LmVzaWduLWxhLmNv
+bS9jcHMwUQYDVR0fBEowSDBGoESgQoZAaHR0cDovL3BraS5lc2lnbi1sYS5jb20vY3JsL3BraUNs
+YXNzMkZpcm1hVHJpYnV0YXJpYS9lbmR1c2VyLmNybDAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYw
+FAYIKwYBBQUHAwIGCCsGAQUFBwMEMCMGA1UdEQQcMBqgGAYIKwYBBAHBAQGgDBYKMTc4NDYyMTgt
+MDAjBgNVHRIEHDAaoBgGCCsGAQQBwQECoAwWCjk5NTUxNzQwLUswDQYJKoZIhvcNAQELBQADggEB
+ABzwrOdMBwE4+oDfb7vIpGXUGZdXY483gaUjFEsO29POZ8ar9eM4VcZBac5zONOxQTkBjb2lBdqL
+3BCHx2v7DG1n7nKp0ZSr23IEEdFcRNi41+c3MEnsur50ZqL+071lmQVFe4DbwS5sRo2CA8ibxMpL
+MyVYhbeUk/oQNi+F03lGmjm67IxGkVrnSNwAIP42igttHeDAP5lkermkb/xwhflyn/Mf0S5AbuZ4
+nEuvFw0QagKoJEMIcUj20qdmzaT/Kj3SQk34MfRZtqMH+eGxQKqvKxJUxXJCqpvxb+qBYzOlX394
+zw7HIhoqFmMdIIkP1HY3YjiNkMWI0WdQprpj6K4=
+</X509Certificate>
+</X509Data>
+</KeyInfo>
+</Signature></DTE>
+</SetDTE>

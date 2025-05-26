@@ -1,0 +1,417 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlusCircle, Calendar, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { 
+  getCompanyRecurringServices, 
+  getCompanyServiceBillings,
+  generatePendingInvoices
+} from '@/lib/recurringServiceService';
+import type { RecurringService, ServiceBilling } from '@/lib/recurringServiceTypes';
+import { useActiveCompany } from '@/context/ActiveCompanyProvider';
+import { initializeFirestoreCollections } from '@/lib/initializeFirestore';
+
+export default function RecurringServicesPage() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const { activeCompanyDetails: currentCompany } = useActiveCompany();
+  const [services, setServices] = useState<RecurringService[]>([]);
+  const [billings, setBillings] = useState<ServiceBilling[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generatingInvoices, setGeneratingInvoices] = useState(false);
+
+  // Estado para el mensaje de inicialización
+  const [initMessage, setInitMessage] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Inicializar Firestore
+  useEffect(() => {
+    const initialize = async () => {
+      setIsInitializing(true);
+      const result = await initializeFirestoreCollections();
+      
+      if (!result.success) {
+        setInitMessage(result.message);
+        setLoading(false);
+      } else {
+        setInitMessage(null);
+        if (currentCompany?.id) {
+          loadData();
+        } else {
+          setLoading(false);
+        }
+      }
+      setIsInitializing(false);
+    };
+    
+    initialize();
+  }, []);
+
+  // Cargar datos cuando cambia la empresa
+  useEffect(() => {
+    if (!isInitializing && !initMessage && currentCompany?.id) {
+      loadData();
+    }
+  }, [currentCompany, isInitializing, initMessage]);
+
+  const loadData = async () => {
+    if (!currentCompany?.id) return;
+    
+    setLoading(true);
+    try {
+      // Cargar servicios recurrentes
+      const servicesResult = await getCompanyRecurringServices(currentCompany.id);
+      if (!('error' in servicesResult)) {
+        setServices(servicesResult);
+      } else {
+        toast({
+          title: "Error",
+          description: servicesResult.error,
+          variant: "destructive",
+        });
+      }
+
+      // Cargar facturaciones
+      const billingsResult = await getCompanyServiceBillings(currentCompany.id);
+      if (!('error' in billingsResult)) {
+        setBillings(billingsResult);
+      } else {
+        toast({
+          title: "Error",
+          description: billingsResult.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Error al cargar datos: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateInvoices = async () => {
+    if (!currentCompany?.id) return;
+    
+    setGeneratingInvoices(true);
+    try {
+      const result = await generatePendingInvoices(currentCompany.id);
+      
+      if ('generated' in result) {
+        toast({
+          title: "Éxito",
+          description: `Se generaron ${result.generated} facturas pendientes.`,
+        });
+        
+        // Recargar datos
+        await loadData();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Error al generar facturas: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingInvoices(false);
+    }
+  };
+
+  const getPendingBillings = () => {
+    return billings.filter(billing => billing.status === 'pending');
+  };
+
+  const getOverdueBillings = () => {
+    return billings.filter(billing => billing.status === 'overdue');
+  };
+
+  const getPaidBillings = () => {
+    return billings.filter(billing => billing.status === 'paid');
+  };
+
+  // Verificar si hay facturas pendientes o vencidas
+  const hasPendingBillings = getPendingBillings().length > 0 || getOverdueBillings().length > 0;
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-500">Activo</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-500">Inactivo</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-500">Pendiente</Badge>;
+      case 'paid':
+        return <Badge className="bg-green-500">Pagado</Badge>;
+      case 'overdue':
+        return <Badge className="bg-red-500">Vencido</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: currency || 'CLP'
+    }).format(amount);
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return format(date, 'dd MMM yyyy', { locale: es });
+  };
+
+  return (
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Servicios Recurrentes</h1>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleGenerateInvoices}
+            disabled={generatingInvoices || loading || !!initMessage}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            Generar Facturas Pendientes
+          </Button>
+          <Button 
+            onClick={() => router.push('/dashboard/servicios-recurrentes/nuevo')}
+            disabled={!!initMessage}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nuevo Servicio
+          </Button>
+        </div>
+      </div>
+      
+      {initMessage && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{initMessage}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl">Servicios Activos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {services.filter(s => s.status === 'active').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl">Facturas Pendientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {getPendingBillings().length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl">Facturas Vencidas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-500">
+              {getOverdueBillings().length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alerta de facturas pendientes */}
+      {hasPendingBillings && (
+        <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Tienes {getPendingBillings().length} factura(s) pendiente(s) y {getOverdueBillings().length} vencida(s). 
+                <button 
+                  onClick={() => document.querySelector('button[data-value="pending"]')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="ml-1 font-medium underline text-yellow-700 hover:text-yellow-600"
+                >
+                  Ver facturas pendientes
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="services">
+        <TabsList className="mb-4">
+          <TabsTrigger value="services">Servicios</TabsTrigger>
+          <TabsTrigger 
+            value="pending"
+            data-value="pending"
+            className="relative"
+          >
+            Facturas Pendientes
+            {(getPendingBillings().length > 0 || getOverdueBillings().length > 0) && (
+              <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-500 text-xs font-medium text-white">
+                {getPendingBillings().length + getOverdueBillings().length}
+              </span>
+                      <CardTitle>{service.name}</CardTitle>
+                      {getStatusBadge(service.status)}
+                    </div>
+                    <CardDescription>{service.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-500">Monto Mensual:</span>
+                      <span className="font-semibold">{formatCurrency(service.amount, service.currency)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">Próxima Facturación:</span>
+                      <span className="font-semibold">{formatDate(service.nextBillingDate)}</span>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="border-t pt-4">
+                    <div className="text-sm text-gray-500">
+                      Día de facturación: {service.billingDay}
+                    </div>
+                  </CardFooter>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-10">
+                <div className="flex flex-col items-center justify-center">
+                  <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay servicios recurrentes</h3>
+                  <p className="text-gray-500 mb-4">Crea tu primer servicio recurrente para empezar a gestionar tus facturaciones mensuales.</p>
+                  <Button onClick={() => router.push('/dashboard/servicios-recurrentes/nuevo')}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nuevo Servicio
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="pending">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading ? (
+              <p>Cargando facturas pendientes...</p>
+            ) : getPendingBillings().length > 0 ? (
+              getPendingBillings().map((billing) => (
+                <Card key={billing.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => router.push(`/dashboard/servicios-recurrentes/factura/${billing.id}`)}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle>
+                        {services.find(s => s.id === billing.serviceId)?.name || 'Servicio'}
+                      </CardTitle>
+                      {getStatusBadge(billing.status)}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-500">Monto:</span>
+                      <span className="font-semibold">{formatCurrency(billing.amount, currentCompany?.currency || 'CLP')}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-500">Fecha de Facturación:</span>
+                      <span className="font-semibold">{formatDate(billing.billingDate)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">Fecha de Vencimiento:</span>
+                      <span className="font-semibold">{formatDate(billing.dueDate)}</span>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="border-t pt-4">
+                    <Button variant="outline" className="w-full" onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/dashboard/servicios-recurrentes/factura/${billing.id}/pagar`);
+                    }}>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Marcar como Pagado
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-10">
+                <div className="flex flex-col items-center justify-center">
+                  <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay facturas pendientes</h3>
+                  <p className="text-gray-500">Todas tus facturas están al día.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="paid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading ? (
+              <p>Cargando facturas pagadas...</p>
+            ) : getPaidBillings().length > 0 ? (
+              getPaidBillings().map((billing) => (
+                <Card key={billing.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => router.push(`/dashboard/servicios-recurrentes/factura/${billing.id}`)}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle>
+                        {services.find(s => s.id === billing.serviceId)?.name || 'Servicio'}
+                      </CardTitle>
+                      {getStatusBadge(billing.status)}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-500">Monto:</span>
+                      <span className="font-semibold">{formatCurrency(billing.amount, currentCompany?.currency || 'CLP')}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-500">Fecha de Facturación:</span>
+                      <span className="font-semibold">{formatDate(billing.billingDate)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">Fecha de Pago:</span>
+                      <span className="font-semibold">{formatDate(billing.paymentDate)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-10">
+                <div className="flex flex-col items-center justify-center">
+                  <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay facturas pagadas</h3>
+                  <p className="text-gray-500">Aún no has registrado pagos de facturas.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
