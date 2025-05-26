@@ -1,15 +1,20 @@
 # Control MiPyme
 
-Control MiPyme es una aplicación web diseñada para ayudar a pequeñas y medianas empresas (PYMEs) a gestionar sus finanzas, realizar seguimiento de transacciones y supervisar múltiples entidades comerciales desde una plataforma única e intuitiva.
+Control MiPyme es una aplicación web diseñada para ayudar a pequeñas y medianas empresas (PYMEs) a gestionar sus finanzas, realizar seguimiento de transacciones, administrar facturación y servicios recurrentes, y supervisar múltiples entidades comerciales desde una plataforma única e intuitiva.
 
 ## Tecnologías Utilizadas (Tech Stack)
 
-*   **Framework:** Next.js (App Router)
+*   **Framework:** Next.js 15 (App Router)
 *   **Lenguaje:** TypeScript
 *   **Estilos:** Tailwind CSS
 *   **Componentes UI:** Shadcn/ui
 *   **Backend & Base de Datos:** Firebase (Authentication, Firestore)
 *   **Gestión de Estado:** React Context API
+*   **Visualización de Datos:** Recharts
+*   **Validación de Formularios:** React Hook Form, Zod
+*   **Procesamiento de Documentos:** xml2js, xlsx
+*   **Generación de PDF:** @react-pdf/renderer
+*   **Gestión de Fechas:** date-fns
 
 ## Estructura del Proyecto
 
@@ -30,6 +35,9 @@ El proyecto sigue una estructura estándar de Next.js con el App Router:
             *   `empresas/`: Páginas para la gestión de empresas.
             *   `cuentas/`: Páginas para la gestión de cuentas bancarias.
             *   `transacciones/`: Páginas para la gestión de transacciones.
+            *   `facturacion/`: Páginas para la gestión de facturas (dashboard, lista, importación).
+            *   `servicios-recurrentes/`: Páginas para la gestión de servicios con facturación mensual.
+            *   `periodo/`: Páginas para la gestión de períodos contables.
             *   `perfil/`: Página de perfil del usuario.
             *   `configuracion/`: Página de configuración de la empresa.
         *   `globals.css`: Estilos globales y capas base/componentes/utilidades de Tailwind CSS, incluyendo variables de tema.
@@ -38,19 +46,27 @@ El proyecto sigue una estructura estándar de Next.js con el App Router:
     *   `components/`: Componentes React reutilizables.
         *   `ui/`: Componentes de UI, muchos de Shadcn/ui, incluyendo `Button`, `Card`, `Input`, `Sidebar`, `ThemeToggle`, etc.
         *   `layout/`: Componentes específicos de layout como `Navbar`.
+        *   `facturacion/`: Componentes específicos para la gestión de facturas, como `FacturasList`, `FacturaDetalle`, `TopEmisoresChart`, etc.
+        *   `FirebaseInitializer.tsx`: Componente para inicializar Firebase.
     *   `context/`: Proveedores de React Context API para la gestión de estado global.
         *   `AuthProvider.tsx`: Gestiona el estado de autenticación del usuario.
         *   `ActiveCompanyProvider.tsx`: Gestiona la empresa activa actualmente seleccionada.
         *   `ThemeProvider.tsx`: Gestiona el estado del tema claro/oscuro.
+        *   `ActivePeriodProvider.tsx`: Gestiona el período contable activo.
     *   `hooks/`: Hooks React personalizados (ej. `useToast`, `useIsMobile`).
     *   `lib/`: Funciones de utilidad, capas de servicio y definiciones de tipos.
         *   `authService.ts`: Funciones para la autenticación con Firebase (Google Sign-In, Sign Out).
         *   `companyService.ts`: Funciones para operaciones CRUD de empresas y gestión de miembros.
         *   `accountService.ts`: Funciones para la gestión de cuentas bancarias.
         *   `transactionService.ts`: Funciones para la gestión de transacciones financieras.
+        *   `facturaService.ts`: Funciones para la gestión de facturas.
+        *   `recurringServiceService.ts`: Funciones para la gestión de servicios recurrentes y su facturación.
+        *   `parseFacturasTxt.ts`: Funciones para importar facturas desde archivos de texto.
         *   `firebase.ts`: Inicialización de la aplicación Firebase.
         *   `firestore.ts`: Instancia de la base de datos Firestore.
+        *   `initializeFirestore.ts`: Funciones para inicializar Firestore.
         *   `types.ts`: Definiciones de tipos TypeScript para las principales estructuras de datos.
+        *   `recurringServiceTypes.ts`: Tipos para servicios recurrentes y facturación.
         *   `utils.ts`: Funciones de utilidad generales (ej. `cn` para classnames).
 *   `firebase.json`: Configuración del proyecto Firebase para hosting y Firestore.
 *   `firestore.rules`: Reglas de seguridad para Firestore.
@@ -71,6 +87,20 @@ El proyecto sigue una estructura estándar de Next.js con el App Router:
     *   Registrar y categorizar ingresos y gastos.
     *   Ver resúmenes financieros (ingresos totales, gastos, saldo).
     *   Filtrado de datos financieros por fecha.
+*   **Gestión de Facturación:**
+    *   Importar facturas emitidas y recibidas desde archivos XML o TXT.
+    *   Visualizar facturas en formato detallado.
+    *   Dashboard con gráficos de principales emisores y montos.
+    *   Listado de facturas con filtros por estado y período.
+*   **Servicios Recurrentes:**
+    *   Registrar servicios con montos fijos que se facturan mensualmente.
+    *   Configurar día específico del mes para la facturación.
+    *   Recibir notificaciones cuando se debe facturar un servicio.
+    *   Marcar facturas como pagadas o pendientes.
+    *   Ver historial de facturación de cada servicio.
+*   **Gestión de Períodos Contables:**
+    *   Definir y seleccionar períodos contables para filtrar información financiera.
+    *   Visualizar datos específicos por período.
 *   **Personalización de Tema:**
     *   Soporte para modo claro y oscuro (`src/context/ThemeProvider.tsx`, `src/components/ui/theme-toggle.tsx`).
     *   Preferencia de tema guardada en `localStorage`.
@@ -113,11 +143,14 @@ El proyecto sigue una estructura estándar de Next.js con el App Router:
 
 ## Desarrollo Futuro (Further Development)
 
-*   Implementar informes financieros detallados y gráficos.
-*   Añadir funcionalidad de importación de transacciones (ej. desde CSV/Excel).
-*   Expandir roles y permisos de usuario.
+*   Mejorar los informes financieros con más gráficos y análisis detallados.
+*   Implementar un sistema de presupuestos y seguimiento de gastos.
+*   Añadir funcionalidad de exportación de datos en múltiples formatos.
+*   Expandir roles y permisos de usuario con niveles más granulares.
 *   Implementar autenticación basada en correo electrónico junto con Google Sign-In.
-*   Refinar las acciones de servidor (server actions) y la seguridad para las interacciones con Firebase (ej. usando Admin SDK para operaciones sensibles como la búsqueda de usuarios por correo electrónico en `companyService.ts`).
+*   Añadir integración con APIs de bancos para importación automática de transacciones.
+*   Desarrollar un sistema de alertas y recordatorios para pagos pendientes.
+*   Refinar las acciones de servidor (server actions) y la seguridad para las interacciones con Firebase (ej. usando Admin SDK para operaciones sensibles).
 
 ---
 
