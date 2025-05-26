@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy Node.js app to Azure Web App - ControlMiPyme
+name: Build and deploy Node.js app to Azure Web App - controlmipyme
 
 on:
   push:
@@ -54,15 +54,15 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_AB84DAE0A48C4937823F776180B9509C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_9136FD7317714581BD320A20D85BCB45 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_28E9E7DF2AD443099380C260E14CF774 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DDFA1D259410416A999F93AB21751EFF }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6570768C8B7743768AC45A29B2ECD111 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_60BC20C1A9A5405E8D39DE0DF9841C78 }}
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: 'ControlMiPyme'
+          app-name: 'controlmipyme'
           slot-name: 'Production'
           package: .
           
