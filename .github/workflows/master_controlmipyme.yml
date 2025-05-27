@@ -67,9 +67,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_40A7175732C344149AF3E2CC4D0AF228 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8776B3D3CD02401CB3EEBB2DA8800953 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_B1C1DE8B4E65413AB919202DEB444C77 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8BE965FC424C414481D1C764DCCE1218 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E8CE0079D8354F359C613FFEF07FEC77 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_83CD324317F544FEB711E1F5255AF1D5 }}
 
       # Configurar las variables de aplicación para el despliegue
       - name: Set Web App Settings
