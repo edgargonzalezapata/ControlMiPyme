@@ -29,36 +29,24 @@ jobs:
           npm run build --if-present
           npm run test --if-present
       
-      # Crear un archivo .deployignore para excluir archivos innecesarios
-      - name: Create .deployignore file
+      # Preparar para el despliegue - eliminar node_modules para reducir tamaño
+      - name: Prepare for deployment
         run: |
-          echo "node_modules" > .deployignore
-          echo ".git" >> .deployignore
-          echo ".github" >> .deployignore
-          echo ".next/cache" >> .deployignore
-          echo "*.log" >> .deployignore
-          echo "*.md" >> .deployignore
-          echo "tests" >> .deployignore
-          echo "__tests__" >> .deployignore
-          echo "test" >> .deployignore
-          echo "docs" >> .deployignore
-          echo ".vscode" >> .deployignore
-      
-      # Crear un archivo zip optimizado para el despliegue
-      - name: Create optimized deployment package
-        run: |
-          # Instalar 7zip si no está disponible
-          if (-not (Get-Command "7z" -ErrorAction SilentlyContinue)) {
-            choco install 7zip -y
+          # Limpiar node_modules - se reinstalarán en Azure
+          if (Test-Path node_modules) {
+            Remove-Item -Recurse -Force node_modules
           }
-          # Crear un archivo zip excluyendo los archivos especificados en .deployignore
-          7z a -tzip deployment.zip . -xr@.deployignore
+          # Limpiar archivos de caché
+          if (Test-Path .next/cache) {
+            Remove-Item -Recurse -Force .next/cache
+          }
       
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: deployment.zip
+          path: .
+          retention-days: 1
 
   deploy:
     runs-on: ubuntu-latest
@@ -83,11 +71,22 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8776B3D3CD02401CB3EEBB2DA8800953 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_B1C1DE8B4E65413AB919202DEB444C77 }}
 
+      # Configurar las variables de aplicación para el despliegue
+      - name: Set Web App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: 'ControlMiPyme'
+          app-settings-json: '{
+            "SCM_DO_BUILD_DURING_DEPLOYMENT": "true",
+            "WEBSITE_RUN_FROM_PACKAGE": "1"
+          }'
+          mask-inputs: false
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
           app-name: 'ControlMiPyme'
           slot-name: 'Production'
-          package: deployment.zip
+          package: .
           
