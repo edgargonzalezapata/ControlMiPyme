@@ -29,36 +29,11 @@ jobs:
           npm run build --if-present
           npm run test --if-present
       
-      # Crear un archivo .deployignore para excluir archivos innecesarios
-      - name: Create .deployignore file
-        run: |
-          echo "node_modules" > .deployignore
-          echo ".git" >> .deployignore
-          echo ".github" >> .deployignore
-          echo ".next/cache" >> .deployignore
-          echo "*.log" >> .deployignore
-          echo "*.md" >> .deployignore
-          echo "tests" >> .deployignore
-          echo "__tests__" >> .deployignore
-          echo "test" >> .deployignore
-          echo "docs" >> .deployignore
-          echo ".vscode" >> .deployignore
-      
-      # Crear un archivo zip optimizado para el despliegue
-      - name: Create optimized deployment package
-        run: |
-          # Instalar 7zip si no está disponible
-          if (-not (Get-Command "7z" -ErrorAction SilentlyContinue)) {
-            choco install 7zip -y
-          }
-          # Crear un archivo zip excluyendo los archivos especificados en .deployignore
-          7z a -tzip deployment.zip . -xr@.deployignore
-      
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: deployment.zip
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
@@ -79,9 +54,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_40A7175732C344149AF3E2CC4D0AF228 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8776B3D3CD02401CB3EEBB2DA8800953 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_B1C1DE8B4E65413AB919202DEB444C77 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_8BE965FC424C414481D1C764DCCE1218 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E8CE0079D8354F359C613FFEF07FEC77 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_83CD324317F544FEB711E1F5255AF1D5 }}
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
@@ -89,5 +64,5 @@ jobs:
         with:
           app-name: 'ControlMiPyme'
           slot-name: 'Production'
-          package: deployment.zip
+          package: .
           
