@@ -29,13 +29,6 @@ function getFirebaseConfig() {
     return window.__FIREBASE_CONFIG__;
   }
   
-  // En producción o cuando estamos desplegados en Netlify, usar la configuración predeterminada
-  // Este cambio asegura que siempre usemos la configuración predeterminada en Netlify
-  if (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app')) {
-    console.log('Firebase: Running on Netlify, using default configuration');
-    return DEFAULT_FIREBASE_CONFIG;
-  }
-  
   // Obtener configuración de las variables de entorno
   const config = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -47,9 +40,8 @@ function getFirebaseConfig() {
   };
 
   // Verificar que todos los valores requeridos estén presentes
-  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'] as const;
-  type ConfigKey = typeof requiredFields[number];
-  const missingFields = requiredFields.filter(field => !config[field as ConfigKey]);
+  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+  const missingFields = requiredFields.filter(field => !config[field]);
 
   // Si faltan campos, usar la configuración predeterminada
   if (missingFields.length > 0) {
@@ -116,11 +108,6 @@ function initializeFirebase() {
     console.error('Firebase: Error initializing:', error);
     return null;
   }
-}
-
-// Función para inicializar Firebase manualmente (exportada para uso en otros módulos)
-export function initializeFirebaseManually() {
-  return initializeFirebase();
 }
 
 // Exportar la función de inicialización y la instancia

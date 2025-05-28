@@ -23,6 +23,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Control Mipyme',
   description: 'Inicio de sesión seguro con Google',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
 
 export default function RootLayout({
@@ -33,6 +34,10 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`} suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="theme-color" content="#4F46E5" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         {/* Script para detectar JS y activar transiciones después de la carga */}
         <Script id="js-detection" strategy="beforeInteractive">
           {`(function() {
@@ -48,7 +53,7 @@ export default function RootLayout({
                 <ThemeProvider>
                 <div className="flex min-h-screen flex-col">
                   <Navbar />
-                  <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
+                  <main className="flex-grow container mx-auto px-2 sm:px-4 py-4 sm:py-8">{children}</main>
                 </div>
                 <Toaster />
               </ThemeProvider>

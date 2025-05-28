@@ -206,11 +206,11 @@ export default function DashboardPage() {
   ] : [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Panel Principal</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Panel Principal</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             {activeCompanyDetails 
               ? `Bienvenido a ${activeCompanyDetails.name}`
               : 'Bienvenido a tu panel de control'
@@ -219,27 +219,27 @@ export default function DashboardPage() {
         </div>
         {/* Date Filter Inputs */}
         {activeCompanyId && (
-          <div className="flex flex-col sm:flex-row gap-2 items-center mt-4 md:mt-0">
-            <div className="flex items-center gap-2">
-              <label htmlFor="startDate" className="text-sm font-medium">Desde:</label>
+          <div className="flex flex-col xs:flex-row gap-2 items-start xs:items-center">
+            <div className="flex items-center gap-2 w-full xs:w-auto">
+              <label htmlFor="startDate" className="text-sm font-medium whitespace-nowrap">Desde:</label>
               <input 
                 type="date" 
                 id="startDate"
                 name="startDate"
                 value={formatDateForInput(startDate)}
                 onChange={(e) => setStartDate(new Date(e.target.value + 'T00:00:00'))} // Ensure time is start of day
-                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600"
+                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600 flex-1 xs:flex-none input-responsive"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <label htmlFor="endDate" className="text-sm font-medium">Hasta:</label>
+            <div className="flex items-center gap-2 w-full xs:w-auto">
+              <label htmlFor="endDate" className="text-sm font-medium whitespace-nowrap">Hasta:</label>
               <input 
                 type="date" 
                 id="endDate"
                 name="endDate"
                 value={formatDateForInput(endDate)}
                 onChange={(e) => setEndDate(new Date(e.target.value + 'T23:59:59'))} // Ensure time is end of day
-                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600"
+                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600 flex-1 xs:flex-none input-responsive"
               />
             </div>
           </div>
@@ -247,22 +247,24 @@ export default function DashboardPage() {
         {!activeCompanyId ? (
           <Button
             onClick={() => router.push('/dashboard/empresas')}
-            className="w-full md:w-auto"
+            className="w-full sm:w-auto btn-responsive"
           >
             <PlusCircle className="mr-2 h-4 w-4" /> 
             Crear Empresa
           </Button>
         ) : (
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={() => router.push('/dashboard/empresas')}
+              className="btn-responsive"
             >
               <Building className="mr-2 h-4 w-4" /> 
-              Gestionar Empresas
+              <span className="hidden xs:inline">Gestionar </span>Empresas
             </Button>
             <Button
               onClick={() => router.push('/dashboard/cuentas/nueva')}
+              className="btn-responsive"
             >
               <PlusCircle className="mr-2 h-4 w-4" /> 
               Nueva Cuenta
@@ -272,33 +274,33 @@ export default function DashboardPage() {
       </div>
       
       {!activeCompanyId && (
-        <Card className="bg-gradient-to-r from-muted/70 to-muted border shadow-md animate-fade-in">
+        <Card className="bg-gradient-to-r from-muted/70 to-muted border shadow-md animate-fade-in card-responsive">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg text-white shadow-md">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-xl font-bold">Comencemos</CardTitle>
-                <CardDescription className="text-base">Para usar todas las funciones, primero crea o selecciona una empresa.</CardDescription>
+                <CardTitle className="text-lg sm:text-xl font-bold">Comencemos</CardTitle>
+                <CardDescription className="text-sm sm:text-base">Para usar todas las funciones, primero crea o selecciona una empresa.</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-col md:flex-row gap-4">
+          <CardContent className="flex flex-col gap-4">
             <Button 
-              className="flex-1 h-auto py-6 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700"
+              className="w-full h-auto py-4 sm:py-6 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 touch-target"
               onClick={() => router.push('/dashboard/empresas')}
             >
-              <Building className="h-10 w-10 mb-2" />
+              <Building className="h-8 w-8 sm:h-10 sm:w-10 mb-2" />
               <div className="text-center">
-                <p className="font-bold text-lg">Crear Empresa</p>
-                <p className="text-sm font-normal text-indigo-100">Configura tu primera empresa para comenzar</p>
+                <p className="font-bold text-base sm:text-lg">Crear Empresa</p>
+                <p className="text-xs sm:text-sm font-normal text-indigo-100">Configura tu primera empresa para comenzar</p>
               </div>
             </Button>
-            <div className="flex-1 h-auto p-6 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-lg border border-amber-200 dark:border-amber-800/50 flex flex-col items-center justify-center gap-2 text-center">
-              <CircleAlert className="h-8 w-8 text-amber-500" />
-              <p className="font-semibold text-lg text-amber-800 dark:text-amber-300">¿Ya tienes una empresa?</p>
-              <p className="text-sm text-amber-700 dark:text-amber-400">Usa el selector de empresas en la barra de navegación superior para cambiar entre tus empresas</p>
+            <div className="w-full h-auto p-4 sm:p-6 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 rounded-lg border border-amber-200 dark:border-amber-800/50 flex flex-col items-center justify-center gap-2 text-center">
+              <CircleAlert className="h-6 w-6 sm:h-8 sm:w-8 text-amber-500" />
+              <p className="font-semibold text-base sm:text-lg text-amber-800 dark:text-amber-300">¿Ya tienes una empresa?</p>
+              <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-400">Usa el selector de empresas en la barra de navegación superior para cambiar entre tus empresas</p>
             </div>
           </CardContent>
         </Card>
@@ -308,43 +310,46 @@ export default function DashboardPage() {
         <div className="space-y-4 animate-fade-in">
           <Tabs defaultValue="overview">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">
-                <LayoutDashboard className="h-4 w-4 mr-2" />
-                General
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">
+                <LayoutDashboard className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">General</span>
+                <span className="xs:hidden">Info</span>
               </TabsTrigger>
-              <TabsTrigger value="reports">
-                <BarChart2 className="h-4 w-4 mr-2" />
-                Informes
+              <TabsTrigger value="reports" className="text-xs sm:text-sm">
+                <BarChart2 className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Informes</span>
+                <span className="xs:hidden">Rep.</span>
               </TabsTrigger>
-              <TabsTrigger value="actions">
-                <Upload className="h-4 w-4 mr-2" />
-                Acciones
+              <TabsTrigger value="actions" className="text-xs sm:text-sm">
+                <Upload className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Acciones</span>
+                <span className="xs:hidden">Acc.</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 mt-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <div className="responsive-grid">
+                <Card className="shadow-sm hover:shadow-md transition-shadow card-responsive mobile-optimized">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-md font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm sm:text-md font-medium flex items-center gap-2">
                       <Wallet className="h-4 w-4 text-primary" />
                       Cuentas Bancarias
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold flex items-center gap-2">
+                    <div className="text-xl sm:text-2xl font-bold flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
                       {isLoadingAccounts ? (
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       ) : (
                         <>
                           {bankAccounts.length}
-                          <span className="text-base font-medium text-muted-foreground">
+                          <span className="text-sm sm:text-base font-medium text-muted-foreground">
                             ({formatCurrency(totalBankBalance)})
                           </span>
                         </>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {bankAccounts.length > 0 
                         ? `Saldo total en ${bankAccounts.length} ${bankAccounts.length === 1 ? 'cuenta' : 'cuentas'}`
                         : "Configure sus cuentas para comenzar a hacer seguimiento financiero"
@@ -352,7 +357,7 @@ export default function DashboardPage() {
                     </p>
                   </CardContent>
                   <CardFooter className="pt-0">
-                    <Button variant="ghost" className="w-full justify-between" asChild>
+                    <Button variant="ghost" className="w-full justify-between touch-target" asChild>
                       <Link href="/dashboard/cuentas">
                         Ver todas <ArrowRight className="h-4 w-4 ml-1" />
                       </Link>
@@ -360,29 +365,29 @@ export default function DashboardPage() {
                   </CardFooter>
                 </Card>
                 
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <Card className="shadow-sm hover:shadow-md transition-shadow card-responsive mobile-optimized">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-md font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm sm:text-md font-medium flex items-center gap-2">
                       <BarChart2 className="h-4 w-4 text-primary" />
                       Transacciones
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold flex items-center gap-2">
+                    <div className="text-xl sm:text-2xl font-bold flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
                       {isLoadingFinancials ? (
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       ) : (
                         <>
                           {transactionCount}
                           {transactionCount > 0 && (
-                            <span className="text-base font-medium text-muted-foreground">
+                            <span className="text-sm sm:text-base font-medium text-muted-foreground">
                               ({formatCurrency(balance)})
                             </span>
                           )}
                         </>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {transactionCount > 0
                         ? `Balance de ${transactionCount} ${transactionCount === 1 ? 'transacción' : 'transacciones'}`
                         : "Importe transacciones desde sus cartolas bancarias"
@@ -390,7 +395,7 @@ export default function DashboardPage() {
                     </p>
                   </CardContent>
                   <CardFooter className="pt-0">
-                    <Button variant="ghost" className="w-full justify-between" asChild>
+                    <Button variant="ghost" className="w-full justify-between touch-target" asChild>
                       <Link href="/dashboard/transacciones">
                         Administrar <ArrowRight className="h-4 w-4 ml-1" />
                       </Link>
@@ -398,15 +403,15 @@ export default function DashboardPage() {
                   </CardFooter>
                 </Card>
                 
-                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <Card className="shadow-sm hover:shadow-md transition-shadow card-responsive mobile-optimized">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-md font-medium flex items-center gap-2">
+                    <CardTitle className="text-sm sm:text-md font-medium flex items-center gap-2">
                       <Briefcase className="h-4 w-4 text-primary" />
                       Empresa
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold truncate">
+                    <div className="text-xl sm:text-2xl font-bold truncate">
                       {activeCompanyDetails.name}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -414,7 +419,7 @@ export default function DashboardPage() {
                     </p>
                   </CardContent>
                   <CardFooter className="pt-0">
-                    <Button variant="ghost" className="w-full justify-between" asChild>
+                    <Button variant="ghost" className="w-full justify-between touch-target" asChild>
                       <Link href="/dashboard/configuracion">
                         Configuración <ArrowRight className="h-4 w-4 ml-1" />
                       </Link>

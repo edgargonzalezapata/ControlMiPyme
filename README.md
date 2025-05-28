@@ -1,157 +1,160 @@
 # Control MiPyme
 
-Control MiPyme es una aplicación web diseñada para ayudar a pequeñas y medianas empresas (PYMEs) a gestionar sus finanzas, realizar seguimiento de transacciones, administrar facturación y servicios recurrentes, y supervisar múltiples entidades comerciales desde una plataforma única e intuitiva.
+Sistema de gestión financiera empresarial desarrollado con Next.js, Firebase y Tailwind CSS.
 
-## Tecnologías Utilizadas (Tech Stack)
+## Características Principales
 
-*   **Framework:** Next.js 15 (App Router)
-*   **Lenguaje:** TypeScript
-*   **Estilos:** Tailwind CSS
-*   **Componentes UI:** Shadcn/ui
-*   **Backend & Base de Datos:** Firebase (Authentication, Firestore)
-*   **Gestión de Estado:** React Context API
-*   **Visualización de Datos:** Recharts
-*   **Validación de Formularios:** React Hook Form, Zod
-*   **Procesamiento de Documentos:** xml2js, xlsx
-*   **Generación de PDF:** @react-pdf/renderer
-*   **Gestión de Fechas:** date-fns
+- **Gestión de Empresas**: Crear y administrar múltiples empresas
+- **Cuentas Bancarias**: Gestión de cuentas y saldos
+- **Transacciones**: Importación y seguimiento de movimientos financieros
+- **Facturación**: Sistema de facturación integrado
+- **Reportes**: Análisis financiero y reportes detallados
+- **Modo Oscuro**: Interfaz adaptable con tema claro y oscuro
+- **Responsive Design**: Optimizado para dispositivos móviles y desktop
+
+## Optimizaciones Móviles
+
+### 🚀 Mejoras Implementadas
+
+#### 1. **Layout Responsive**
+- Breakpoints personalizados: `xs: 475px`, `sm: 640px`, `md: 768px`, etc.
+- Sidebar colapsible en móvil con overlay
+- Navegación adaptativa con menú hamburguesa
+
+#### 2. **Componentes Optimizados**
+- **Navbar**: Menú lateral deslizable en móvil
+- **CompanySelector**: Ancho adaptativo y texto truncado
+- **Dashboard**: Cards responsive con grid adaptativo
+- **Sidebar**: Navegación touch-friendly con botones de tamaño adecuado
+
+#### 3. **Estilos CSS Móviles**
+```css
+/* Touch targets mejorados */
+.touch-target {
+  @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+
+/* Scroll suave en móvil */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Optimizaciones táctiles */
+.mobile-optimized {
+  @apply touch-manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+```
+
+#### 4. **Clases Utility Responsive**
+- `.btn-responsive`: Botones adaptativos
+- `.input-responsive`: Inputs con altura variable
+- `.card-responsive`: Cards con padding adaptativo
+- `.responsive-grid`: Grid que se adapta al tamaño de pantalla
+- `.text-responsive`: Tipografía escalable
+
+#### 5. **Meta Tags PWA**
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#4F46E5" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+```
+
+### 📱 Características Móviles
+
+#### **Navegación Móvil**
+- Sidebar deslizable desde la izquierda
+- Overlay semi-transparente para cerrar
+- Botón flotante para abrir menú
+- Auto-cierre al seleccionar elemento
+
+#### **Interfaz Adaptativa**
+- Texto truncado en espacios reducidos
+- Iconos y botones de tamaño táctil (44px mínimo)
+- Espaciado responsive (padding/margin adaptativos)
+- Grid de cards que se reorganiza automáticamente
+
+#### **Optimizaciones de Performance**
+- Hook `useIsMobile()` para detección eficiente de dispositivos
+- Transiciones CSS optimizadas
+- Lazy loading de componentes pesados
+- Scroll nativo optimizado para iOS/Android
+
+### 🛠️ Uso de Clases Responsive
+
+```jsx
+// Ejemplo de uso en componentes
+<div className="p-2 sm:p-4 lg:p-6"> {/* Padding responsive */}
+  <h1 className="text-lg sm:text-xl lg:text-2xl"> {/* Texto responsive */}
+    <Button className="btn-responsive touch-target"> {/* Botón optimizado */}
+      <span className="hidden xs:inline">Texto completo</span>
+      <span className="xs:hidden">Corto</span> {/* Texto condicional */}
+    </Button>
+  </h1>
+</div>
+```
+
+### 📋 Checklist de Optimización Móvil
+
+- ✅ Viewport meta tag configurado
+- ✅ Touch targets de 44px mínimo
+- ✅ Navegación touch-friendly
+- ✅ Texto legible en pantallas pequeñas
+- ✅ Botones y enlaces fáciles de tocar
+- ✅ Scroll suave y natural
+- ✅ Transiciones optimizadas
+- ✅ Grid responsive
+- ✅ Imágenes adaptativas
+- ✅ Formularios móvil-friendly
+
+## Tecnologías Utilizadas
+
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui
+- **Backend**: Firebase (Firestore, Auth, Storage)
+- **Deployment**: Netlify
+- **Icons**: Lucide React
+
+## Instalación y Desarrollo
+
+```bash
+# Clonar el repositorio
+git clone [repository-url]
+
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno
+cp .env.example .env.local
+
+# Ejecutar en desarrollo
+npm run dev
+```
 
 ## Estructura del Proyecto
 
-El proyecto sigue una estructura estándar de Next.js con el App Router:
+```
+src/
+├── app/                 # App Router de Next.js
+├── components/          # Componentes reutilizables
+│   ├── ui/             # Componentes base (shadcn/ui)
+│   └── layout/         # Componentes de layout
+├── context/            # Context providers
+├── hooks/              # Custom hooks
+├── lib/                # Utilidades y configuraciones
+└── types/              # Definiciones de TypeScript
+```
 
-*   `README.md`: Este archivo.
-*   `next.config.ts`: Configuración de Next.js.
-*   `tailwind.config.ts`: Configuración de Tailwind CSS.
-*   `tsconfig.json`: Configuración de TypeScript.
-*   `package.json`: Dependencias y scripts del proyecto.
-*   `public/`: Archivos estáticos (ej. imágenes, favicon).
-*   `src/`: Código principal de la aplicación.
-    *   `app/`: Contiene todas las rutas, layouts y páginas.
-        *   `api/`: Manejadores de rutas API.
-        *   `dashboard/`: Rutas y componentes específicos del panel de control del usuario autenticado.
-            *   `layout.tsx`: Layout para la sección del panel de control, incluyendo la barra lateral principal.
-            *   `page.tsx`: Página principal del panel de control que muestra resúmenes financieros.
-            *   `empresas/`: Páginas para la gestión de empresas.
-            *   `cuentas/`: Páginas para la gestión de cuentas bancarias.
-            *   `transacciones/`: Páginas para la gestión de transacciones.
-            *   `facturacion/`: Páginas para la gestión de facturas (dashboard, lista, importación).
-            *   `servicios-recurrentes/`: Páginas para la gestión de servicios con facturación mensual.
-            *   `periodo/`: Páginas para la gestión de períodos contables.
-            *   `perfil/`: Página de perfil del usuario.
-            *   `configuracion/`: Página de configuración de la empresa.
-        *   `globals.css`: Estilos globales y capas base/componentes/utilidades de Tailwind CSS, incluyendo variables de tema.
-        *   `layout.tsx`: Layout raíz para toda la aplicación.
-        *   `page.tsx`: Página de inicio/login.
-    *   `components/`: Componentes React reutilizables.
-        *   `ui/`: Componentes de UI, muchos de Shadcn/ui, incluyendo `Button`, `Card`, `Input`, `Sidebar`, `ThemeToggle`, etc.
-        *   `layout/`: Componentes específicos de layout como `Navbar`.
-        *   `facturacion/`: Componentes específicos para la gestión de facturas, como `FacturasList`, `FacturaDetalle`, `TopEmisoresChart`, etc.
-        *   `FirebaseInitializer.tsx`: Componente para inicializar Firebase.
-    *   `context/`: Proveedores de React Context API para la gestión de estado global.
-        *   `AuthProvider.tsx`: Gestiona el estado de autenticación del usuario.
-        *   `ActiveCompanyProvider.tsx`: Gestiona la empresa activa actualmente seleccionada.
-        *   `ThemeProvider.tsx`: Gestiona el estado del tema claro/oscuro.
-        *   `ActivePeriodProvider.tsx`: Gestiona el período contable activo.
-    *   `hooks/`: Hooks React personalizados (ej. `useToast`, `useIsMobile`).
-    *   `lib/`: Funciones de utilidad, capas de servicio y definiciones de tipos.
-        *   `authService.ts`: Funciones para la autenticación con Firebase (Google Sign-In, Sign Out).
-        *   `companyService.ts`: Funciones para operaciones CRUD de empresas y gestión de miembros.
-        *   `accountService.ts`: Funciones para la gestión de cuentas bancarias.
-        *   `transactionService.ts`: Funciones para la gestión de transacciones financieras.
-        *   `facturaService.ts`: Funciones para la gestión de facturas.
-        *   `recurringServiceService.ts`: Funciones para la gestión de servicios recurrentes y su facturación.
-        *   `parseFacturasTxt.ts`: Funciones para importar facturas desde archivos de texto.
-        *   `firebase.ts`: Inicialización de la aplicación Firebase.
-        *   `firestore.ts`: Instancia de la base de datos Firestore.
-        *   `initializeFirestore.ts`: Funciones para inicializar Firestore.
-        *   `types.ts`: Definiciones de tipos TypeScript para las principales estructuras de datos.
-        *   `recurringServiceTypes.ts`: Tipos para servicios recurrentes y facturación.
-        *   `utils.ts`: Funciones de utilidad generales (ej. `cn` para classnames).
-*   `firebase.json`: Configuración del proyecto Firebase para hosting y Firestore.
-*   `firestore.rules`: Reglas de seguridad para Firestore.
-*   `firestore.indexes.json`: Definiciones de índices de Firestore.
+## Contribución
 
-## Funcionalidades Clave
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-*   **Autenticación de Usuarios:** Inicio de sesión/registro seguro usando Google (Firebase Authentication).
-*   **Panel de Control (Dashboard):** Vista centralizada para usuarios autenticados.
-    *   **Navegación con Barra Lateral Adaptable (Responsive Sidebar):** (`src/components/ui/sidebar.tsx`, integrada en `src/app/dashboard/layout.tsx`) Navegación colapsable y amigable con dispositivos móviles.
-    *   **Contenido Dinámico:** Muestra información relevante para la empresa seleccionada o datos generales del usuario.
-*   **Gestión de Empresas:**
-    *   Crear, ver, actualizar y eliminar empresas.
-    *   Gestionar miembros de la empresa y sus roles (administrador/lector).
-    *   Seleccionar una empresa "activa" para enfocar las vistas del panel de control.
-*   **Seguimiento Financiero (Por Empresa):**
-    *   Gestionar cuentas bancarias.
-    *   Registrar y categorizar ingresos y gastos.
-    *   Ver resúmenes financieros (ingresos totales, gastos, saldo).
-    *   Filtrado de datos financieros por fecha.
-*   **Gestión de Facturación:**
-    *   Importar facturas emitidas y recibidas desde archivos XML o TXT.
-    *   Visualizar facturas en formato detallado.
-    *   Dashboard con gráficos de principales emisores y montos.
-    *   Listado de facturas con filtros por estado y período.
-*   **Servicios Recurrentes:**
-    *   Registrar servicios con montos fijos que se facturan mensualmente.
-    *   Configurar día específico del mes para la facturación.
-    *   Recibir notificaciones cuando se debe facturar un servicio.
-    *   Marcar facturas como pagadas o pendientes.
-    *   Ver historial de facturación de cada servicio.
-*   **Gestión de Períodos Contables:**
-    *   Definir y seleccionar períodos contables para filtrar información financiera.
-    *   Visualizar datos específicos por período.
-*   **Personalización de Tema:**
-    *   Soporte para modo claro y oscuro (`src/context/ThemeProvider.tsx`, `src/components/ui/theme-toggle.tsx`).
-    *   Preferencia de tema guardada en `localStorage`.
-*   **Notificaciones:** Retroalimentación al usuario mediante toasts (`src/components/ui/toaster.tsx`, `src/hooks/use-toast.ts`).
+## Licencia
 
-## Cómo Empezar (Getting Started)
-
-1.  **Prerrequisitos:**
-    *   Node.js (versión especificada en `.nvmrc` o la última LTS)
-    *   npm o yarn
-
-2.  **Configuración de Firebase:**
-    *   Crea un proyecto de Firebase en [https://console.firebase.google.com/](https://console.firebase.google.com/).
-    *   Habilita la Autenticación con Google en la consola de Firebase (Authentication -> Sign-in method).
-    *   Habilita la base de datos Firestore.
-    *   Copia la configuración de tu proyecto Firebase (Configuración del proyecto -> General -> Tus apps -> App web) y pégala en `src/lib/firebase.ts`. Asegúrate de que las variables de entorno estén configuradas correctamente (ej. usando un archivo `.env.local`, consulta `src/lib/firebase.ts` para las variables requeridas).
-    *   Despliega las reglas de Firestore (`firestore.rules`) y los índices (`firestore.indexes.json`) usando Firebase CLI o configúralos manualmente en la consola. El archivo `firebase.json` está configurado para desplegar estos.
-
-3.  **Instalar Dependencias:**
-    ```bash
-    npm install
-    # o
-    yarn install
-    ```
-
-4.  **Ejecutar el Servidor de Desarrollo:**
-    ```bash
-    npm run dev
-    # o
-    yarn dev
-    ```
-    La aplicación estará disponible en `http://localhost:3000`.
-
-## Scripts
-
-*   `dev`: Inicia el servidor de desarrollo de Next.js.
-*   `build`: Compila la aplicación para producción.
-*   `start`: Inicia el servidor de producción.
-*   `lint`: Ejecuta ESLint para verificar problemas de calidad de código.
-
-## Desarrollo Futuro (Further Development)
-
-*   Mejorar los informes financieros con más gráficos y análisis detallados.
-*   Implementar un sistema de presupuestos y seguimiento de gastos.
-*   Añadir funcionalidad de exportación de datos en múltiples formatos.
-*   Expandir roles y permisos de usuario con niveles más granulares.
-*   Implementar autenticación basada en correo electrónico junto con Google Sign-In.
-*   Añadir integración con APIs de bancos para importación automática de transacciones.
-*   Desarrollar un sistema de alertas y recordatorios para pagos pendientes.
-*   Refinar las acciones de servidor (server actions) y la seguridad para las interacciones con Firebase (ej. usando Admin SDK para operaciones sensibles).
-
----
-
-Este README proporciona una visión general completa. Siéntete libre de expandir secciones específicas a medida que el proyecto evolucione.
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.

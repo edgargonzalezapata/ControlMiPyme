@@ -20,7 +20,7 @@ import {
   Loader2, LayoutDashboard, Briefcase, UserCircle, Banknote, FileText, 
   Settings, ArrowLeftRight, BarChart3, LogOut, Building, ArrowLeft,
   Home, CreditCard, PieChart, TrendingUp, ChevronRight, User, HelpCircle,
-  Moon, Sun, Calendar
+  Moon, Sun, Calendar, Menu
 } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,6 +35,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useTheme } from '@/context/ThemeProvider';
 import { Upload } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Definir tipos para los elementos de navegación
 interface NavItem {
@@ -54,7 +55,8 @@ const NavItemComponent = ({
   activeCompanyId, 
   isCompanyContext,
   isAdminOnly = false,
-  isUserAdmin = false
+  isUserAdmin = false,
+  onItemClick
 }: {
   item: NavItem;
   pathname: string;
@@ -62,6 +64,7 @@ const NavItemComponent = ({
   isCompanyContext: boolean;
   isAdminOnly?: boolean;
   isUserAdmin?: boolean;
+  onItemClick: () => void;
 }) => {
   // Skip rendering admin-only items if user is not admin
   if (isAdminOnly && !isUserAdmin) return null;
@@ -82,6 +85,7 @@ const NavItemComponent = ({
               : 'text-gray-700 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300'}
             ${item.isPlaceholder ? 'opacity-60' : ''}
           `}
+          onClick={onItemClick}
         >
           <span className={`
             flex h-5 w-5 shrink-0 items-center justify-center rounded-md 
@@ -114,35 +118,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const [isUserAdminOfActiveCompany, setIsUserAdminOfActiveCompany] = useState(false);
   const [currentCompanyName, setCurrentCompanyName] = useState<string | null>(null);
   const [isCompanyContext, setIsCompanyContext] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobileView, setIsMobileView] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
 
   useEffect(() => {
-    const handleResize = () => {
-      const isMobile = window.innerWidth < 768;
-      setIsMobileView(isMobile);
-      if (isMobile) {
-        setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  // Cerrar el sidebar cuando se cambia de ruta en dispositivos móviles
-  useEffect(() => {
-    if (isMobileView) {
+    // Update sidebar state when mobile state changes
+    if (isMobile) {
       setIsSidebarOpen(false);
+    } else {
+      setIsSidebarOpen(true);
     }
-  }, [pathname, isMobileView]);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!isFirebaseReady && !authLoading) {
@@ -255,37 +245,44 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   currentNavItems = currentNavItems.filter(item => !item.requiresActiveCompany || !!activeCompanyId);
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen={!isMobile}>
       <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-1 pt-16 md:pt-16"> 
+        <div className="flex flex-1 pt-16"> 
           {/* Main Sidebar */}
           <Sidebar 
-            className={`border-r border-indigo-100 dark:border-indigo-900/50 fixed top-16 left-0 h-[calc(100vh-4rem)] z-30 bg-white dark:bg-gray-900 shadow-sm transition-all duration-300 ${isMobileView && !isSidebarOpen ? '-translate-x-full' : 'translate-x-0'}`} 
-            collapsible="none"
+            className={`border-r border-indigo-100 dark:border-indigo-900/50 fixed top-16 left-0 h-[calc(100vh-4rem)] z-30 bg-white dark:bg-gray-900 shadow-sm transition-transform duration-300 ease-in-out ${
+              isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'
+            }`}
+            collapsible={isMobile ? "offcanvas" : "none"}
           >
             {/* Sidebar Header with User Info */}
             <SidebarHeader className="p-3 border-b border-indigo-100 dark:border-indigo-900/50">
-              <div className="flex items-center gap-2 mb-2 md:mb-2">
+              <div className="flex items-center gap-2 mb-2">
                 <div className="relative">
                   <div className="absolute -inset-0.5 bg-indigo-600/20 dark:bg-indigo-600/30 rounded-full blur-sm"></div>
-                  <Avatar className="h-10 w-10 border-2 border-white dark:border-gray-800 relative z-10">
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-white dark:border-gray-800 relative z-10">
                     {user.photoURL ? (
                       <AvatarImage src={user.photoURL} alt={user.displayName || 'Usuario'} />
                     ) : null}
-                    <AvatarFallback className="bg-indigo-600 text-white font-semibold text-sm">
+                    <AvatarFallback className="bg-indigo-600 text-white font-semibold text-xs sm:text-sm">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <div className="flex flex-col overflow-hidden md:block">
-                  <p className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate" title={user.displayName || undefined}>
+                <div className="flex flex-col overflow-hidden flex-1">
+                  <p className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 truncate" title={user.displayName || undefined}>
                     {user.displayName || 'Usuario'}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={user.email || undefined}>
                     {user.email || 'No email'}
                   </p>
                 </div>
-                <SidebarTrigger className="md:hidden ml-auto h-7 w-7 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full" />
+                {isMobile && (
+                  <SidebarTrigger 
+                    className="h-7 w-7 ml-auto" 
+                    onClick={() => setIsSidebarOpen(false)}
+                  />
+                )}
               </div>
               
               {/* Active Company Display */}
@@ -314,7 +311,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </SidebarHeader>
 
             {/* Sidebar Content with Navigation */}
-            <SidebarContent className="p-3">
+            <SidebarContent className="p-3 overflow-y-auto">
               {/* Dashboard Section */}
               <div className="mb-4">
                 <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2 mb-1.5">
@@ -322,7 +319,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </p>
                 <SidebarMenu>
                   {baseNavItems.map((item) => (
-                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} />
+                    <NavItemComponent 
+                      key={item.href} 
+                      item={item} 
+                      pathname={pathname} 
+                      activeCompanyId={activeCompanyId} 
+                      isCompanyContext={isCompanyContext}
+                      onItemClick={() => isMobile && setIsSidebarOpen(false)}
+                    />
                   ))}
                 </SidebarMenu>
               </div>
@@ -334,7 +338,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </p>
                 <SidebarMenu>
                   {finanzasItems.map((item) => (
-                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} isAdminOnly={item.isAdminOnly} isUserAdmin={isUserAdminOfActiveCompany} />
+                    <NavItemComponent 
+                      key={item.href} 
+                      item={item} 
+                      pathname={pathname} 
+                      activeCompanyId={activeCompanyId} 
+                      isCompanyContext={isCompanyContext} 
+                      isAdminOnly={item.isAdminOnly} 
+                      isUserAdmin={isUserAdminOfActiveCompany}
+                      onItemClick={() => isMobile && setIsSidebarOpen(false)}
+                    />
                   ))}
                 </SidebarMenu>
               </div>
@@ -346,7 +359,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </p>
                 <SidebarMenu>
                   {facturacionItems.map((item) => (
-                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} isAdminOnly={item.isAdminOnly} isUserAdmin={isUserAdminOfActiveCompany} />
+                    <NavItemComponent 
+                      key={item.href} 
+                      item={item} 
+                      pathname={pathname} 
+                      activeCompanyId={activeCompanyId} 
+                      isCompanyContext={isCompanyContext} 
+                      isAdminOnly={item.isAdminOnly} 
+                      isUserAdmin={isUserAdminOfActiveCompany}
+                      onItemClick={() => isMobile && setIsSidebarOpen(false)}
+                    />
                   ))}
                 </SidebarMenu>
               </div>
@@ -358,7 +380,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </p>
                 <SidebarMenu>
                   {configuracionItems.map((item) => (
-                    <NavItemComponent key={item.href} item={item} pathname={pathname} activeCompanyId={activeCompanyId} isCompanyContext={isCompanyContext} isAdminOnly={item.isAdminOnly} isUserAdmin={isUserAdminOfActiveCompany} />
+                    <NavItemComponent 
+                      key={item.href} 
+                      item={item} 
+                      pathname={pathname} 
+                      activeCompanyId={activeCompanyId} 
+                      isCompanyContext={isCompanyContext} 
+                      isAdminOnly={item.isAdminOnly} 
+                      isUserAdmin={isUserAdminOfActiveCompany}
+                      onItemClick={() => isMobile && setIsSidebarOpen(false)}
+                    />
                   ))}
                 </SidebarMenu>
               </div>
@@ -396,78 +427,22 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </Sidebar>
 
-          {/* Main Content */}
-          {/* Overlay para cerrar el sidebar en móvil */}
-          {isMobileView && isSidebarOpen && (
+          {/* Mobile Sidebar Overlay */}
+          {isMobile && isSidebarOpen && (
             <div 
-              className="fixed inset-0 bg-black/50 z-20 transition-opacity duration-300"
+              className="fixed inset-0 bg-black/50 z-20 top-16"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
-          
-          {/* Fixed header para móvil */}
-          {isMobileView && (
-            <div className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-900 border-b border-indigo-100 dark:border-indigo-900/50 z-30 flex items-center px-3">
-              <SidebarTrigger 
-                className="h-9 w-9 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full flex items-center justify-center mr-3" 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              />
-              <div className="flex items-center">
-                <div className="h-8 w-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold mr-2">
-                  {userInitials}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">
-                    {activeCompanyDetails?.name || 'Control MiPyme'}
-                  </p>
-                </div>
-              </div>
-              <ThemeToggle className="ml-auto h-8 w-8" />
-            </div>
-          )}
-          
-          <main className="flex-1 flex-col bg-gray-50 dark:bg-gray-900 p-3 md:p-4 lg:p-6 overflow-auto ml-0 md:ml-[16rem] transition-all duration-200 ease-linear">
-            <div className="w-full h-full dark:text-gray-100 pb-16 md:pb-0">
+
+          {/* Main Content */}
+          <main className={`flex-1 flex-col bg-gray-50 dark:bg-gray-900 p-2 sm:p-3 md:p-4 lg:p-6 overflow-auto transition-all duration-200 ease-linear ${
+            isMobile ? 'ml-0' : 'ml-[16rem]'
+          }`}>
+            <div className="w-full h-full dark:text-gray-100">
               {children}
             </div>
           </main>
-          
-          {/* Barra de navegación inferior para móvil */}
-          {isMobileView && (
-            <div className="fixed bottom-0 left-0 right-0 h-14 bg-white dark:bg-gray-900 border-t border-indigo-100 dark:border-indigo-900/50 z-30 flex items-center justify-around px-2">
-              <Link href="/dashboard" className={`flex flex-col items-center justify-center w-16 py-1 rounded-md ${pathname === '/dashboard' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                <Home className="h-5 w-5" />
-                <span className="text-[10px] mt-0.5">Inicio</span>
-              </Link>
-              
-              <Link href="/dashboard/transacciones" className={`flex flex-col items-center justify-center w-16 py-1 rounded-md ${pathname.startsWith('/dashboard/transacciones') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                <ArrowLeftRight className="h-5 w-5" />
-                <span className="text-[10px] mt-0.5">Transac.</span>
-              </Link>
-              
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="flex flex-col items-center justify-center w-16 py-1 rounded-md text-gray-600 dark:text-gray-400"
-              >
-                <div className="h-5 w-5 flex items-center justify-center">
-                  <span className="block w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center">
-                    <ChevronRight className="h-4 w-4" />
-                  </span>
-                </div>
-                <span className="text-[10px] mt-0.5">Menú</span>
-              </button>
-              
-              <Link href="/dashboard/facturacion/lista" className={`flex flex-col items-center justify-center w-16 py-1 rounded-md ${pathname.startsWith('/dashboard/facturacion') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                <FileText className="h-5 w-5" />
-                <span className="text-[10px] mt-0.5">Facturas</span>
-              </Link>
-              
-              <Link href="/dashboard/empresas" className={`flex flex-col items-center justify-center w-16 py-1 rounded-md ${pathname.startsWith('/dashboard/empresas') ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                <Briefcase className="h-5 w-5" />
-                <span className="text-[10px] mt-0.5">Empresas</span>
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </SidebarProvider>

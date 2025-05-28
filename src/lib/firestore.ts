@@ -26,30 +26,9 @@ function initializeFirestore(): Firestore | null {
     return firestoreDb;
   }
   
-  // Si no hay app de Firebase, intentar inicializar de nuevo
+  // Si no hay app de Firebase, no podemos inicializar Firestore
   if (!app) {
-    console.warn('Firestore: Firebase App is not initialized. Attempting to reinitialize...');
-    
-    // Importar dinámicamente para evitar problemas de circular dependency
-    import('./firebase').then(({ initializeFirebaseManually }) => {
-      const firebaseApp = initializeFirebaseManually();
-      if (firebaseApp) {
-        console.log('Firestore: Firebase App reinitialized successfully');
-        // Inicializar Firestore después de reiniciar Firebase
-        firestoreDb = getFirestore(firebaseApp);
-        console.log('Firestore: Initialized successfully after Firebase reinitialization');
-        
-        // Guardar en variable global
-        if (typeof window !== 'undefined') {
-          window.__FIRESTORE_DB__ = firestoreDb;
-        }
-      } else {
-        console.error('Firestore: Failed to reinitialize Firebase App');
-      }
-    }).catch(error => {
-      console.error('Firestore: Error importing firebase module:', error);
-    });
-    
+    console.error('Firestore: Firebase App is not initialized. Firestore will not be available. Check .env.local file and Firebase configuration.');
     return null;
   }
 
