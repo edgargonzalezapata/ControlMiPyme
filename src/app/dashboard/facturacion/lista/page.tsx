@@ -14,6 +14,8 @@ import { useActiveCompany } from '@/context/ActiveCompanyProvider';
 import { useActivePeriod } from '@/context/ActivePeriodProvider';
 import { FacturaConEstado, EstadoFactura } from '@/types/factura';
 import { getFacturasByEmpresa, deleteFactura } from '@/lib/facturaService';
+import { AdvancedFilters } from '@/components/ui/advanced-filters';
+import { SearchBar } from '@/components/ui/search-bar';
 
 export default function ListaFacturasPage() {
   const router = useRouter();
@@ -271,6 +273,78 @@ export default function ListaFacturasPage() {
     return meses[mes - 1];
   };
 
+  // Configuración de campos para el componente AdvancedFilters
+  const filterFields = [
+    {
+      key: 'receptor',
+      label: 'Receptor',
+      type: 'text' as const,
+      placeholder: 'Buscar por receptor...'
+    },
+    {
+      key: 'fechaDesde',
+      label: 'Fecha desde',
+      type: 'date' as const
+    },
+    {
+      key: 'fechaHasta',
+      label: 'Fecha hasta',
+      type: 'date' as const
+    },
+    {
+      key: 'montoMin',
+      label: 'Monto mínimo',
+      type: 'number' as const,
+      placeholder: '0'
+    },
+    {
+      key: 'montoMax',
+      label: 'Monto máximo',
+      type: 'number' as const,
+      placeholder: '999999'
+    }
+  ];
+
+  // Filtros rápidos
+  const quickFilters = [
+    {
+      key: 'periodo-activo',
+      label: `${obtenerNombreMes(activePeriod.month)} ${activePeriod.year}`,
+      action: restablecerPeriodoActivo
+    },
+    {
+      key: 'ultimos-7-dias',
+      label: 'Últimos 7 días',
+      action: () => {
+        const today = new Date();
+        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        setFilters(prev => ({
+          ...prev,
+          fechaDesde: formatearFecha(lastWeek),
+          fechaHasta: formatearFecha(today)
+        }));
+      }
+    },
+    {
+      key: 'este-mes',
+      label: 'Este mes',
+      action: () => {
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        setFilters(prev => ({
+          ...prev,
+          fechaDesde: formatearFecha(startOfMonth),
+          fechaHasta: formatearFecha(today)
+        }));
+      }
+    }
+  ];
+
+  // Manejar cambios en filtros
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -290,29 +364,26 @@ export default function ListaFacturasPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Buscar facturas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-                startIcon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Exportar
-              </Button>
-              <Button variant="outline" size="sm" onClick={restablecerPeriodoActivo}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Periodo Activo
-              </Button>
-              <Button variant="outline" size="sm" onClick={limpiarFiltros}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Limpiar
-              </Button>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <SearchBar
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  placeholder="Buscar por folio, RUT, razón social..."
+                  className="w-full"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={restablecerPeriodoActivo}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Periodo Activo
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Exportar
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -346,52 +417,18 @@ export default function ListaFacturasPage() {
               </TabsTrigger>
             </TabsList>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div>
-                <label htmlFor="receptor" className="block text-sm font-medium text-gray-700 mb-1">Receptor</label>
-                <Input
-                  id="receptor"
-                  placeholder="Buscar por receptor..."
-                  value={filters.receptor}
-                  onChange={(e) => setFilters(prev => ({ ...prev, receptor: e.target.value }))}
-                />
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label htmlFor="fechaDesde" className="block text-sm font-medium text-gray-700">Fecha desde</label>
-                  {filters.fechaDesde === fechasPeriodo.fechaDesde && (
-                    <span className="text-xs text-primary font-medium px-2 py-0.5 rounded-full bg-primary/10">
-                      Periodo activo
-                    </span>
-                  )}
-                </div>
-                <Input
-                  id="fechaDesde"
-                  type="date"
-                  value={filters.fechaDesde}
-                  onChange={(e) => setFilters(prev => ({ ...prev, fechaDesde: e.target.value }))}
-                  className={filters.fechaDesde === fechasPeriodo.fechaDesde ? "border-primary/50 ring-1 ring-primary/20" : ""}
-                />
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label htmlFor="fechaHasta" className="block text-sm font-medium text-gray-700">Fecha hasta</label>
-                  {filters.fechaHasta === fechasPeriodo.fechaHasta && (
-                    <span className="text-xs text-primary font-medium px-2 py-0.5 rounded-full bg-primary/10">
-                      Periodo activo
-                    </span>
-                  )}
-                </div>
-                <Input
-                  id="fechaHasta"
-                  type="date"
-                  value={filters.fechaHasta}
-                  onChange={(e) => setFilters(prev => ({ ...prev, fechaHasta: e.target.value }))}
-                  className={filters.fechaHasta === fechasPeriodo.fechaHasta ? "border-primary/50 ring-1 ring-primary/20" : ""}
-                />
-              </div>
+            {/* Improved Filters Section */}
+            <div className="mt-4">
+              <AdvancedFilters
+                title="Filtros de Facturas"
+                fields={filterFields}
+                values={filters}
+                onChange={handleFilterChange}
+                onClear={limpiarFiltros}
+                quickFilters={quickFilters}
+                collapsible={true}
+                className="mb-4"
+              />
             </div>
 
             <TabsContent value={activeTab} className="mt-6">

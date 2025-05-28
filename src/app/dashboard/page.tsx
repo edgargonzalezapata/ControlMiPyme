@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   Briefcase, UserCircle, ArrowRight, Building, Loader2, ArrowRightCircle, 
-  BarChart2, Wallet, CreditCard, TrendingUp, TrendingDown, DollarSign, Settings, PlusCircle, CircleAlert, LayoutDashboard, Upload, ShieldCheck
+  BarChart2, Wallet, CreditCard, TrendingUp, TrendingDown, DollarSign, Settings, PlusCircle, CircleAlert, LayoutDashboard, Upload, ShieldCheck, Calendar
 } from 'lucide-react';
 import { useAuthContext } from '@/context/AuthProvider';
 import { useActiveCompany } from '@/context/ActiveCompanyProvider';
@@ -207,7 +207,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Panel Principal</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
@@ -217,62 +217,120 @@ export default function DashboardPage() {
             }
           </p>
         </div>
-        {/* Date Filter Inputs */}
+        
+        {/* Improved Date Filter Section */}
         {activeCompanyId && (
-          <div className="flex flex-col xs:flex-row gap-2 items-start xs:items-center">
-            <div className="flex items-center gap-2 w-full xs:w-auto">
-              <label htmlFor="startDate" className="text-sm font-medium whitespace-nowrap">Desde:</label>
-              <input 
-                type="date" 
-                id="startDate"
-                name="startDate"
-                value={formatDateForInput(startDate)}
-                onChange={(e) => setStartDate(new Date(e.target.value + 'T00:00:00'))} // Ensure time is start of day
-                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600 flex-1 xs:flex-none input-responsive"
-              />
+          <div className="w-full lg:w-auto">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Filtro de Período</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="startDate" className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
+                    Fecha desde
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      id="startDate"
+                      name="startDate"
+                      value={formatDateForInput(startDate)}
+                      onChange={(e) => setStartDate(new Date(e.target.value + 'T00:00:00'))}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label htmlFor="endDate" className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
+                    Fecha hasta
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      id="endDate"
+                      name="endDate"
+                      value={formatDateForInput(endDate)}
+                      onChange={(e) => setEndDate(new Date(e.target.value + 'T23:59:59'))}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Quick filter buttons */}
+              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    setStartDate(lastWeek);
+                    setEndDate(today);
+                  }}
+                  className="px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition-colors"
+                >
+                  Últimos 7 días
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    setStartDate(lastMonth);
+                    setEndDate(today);
+                  }}
+                  className="px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition-colors"
+                >
+                  Últimos 30 días
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const startOfMonth = getStartOfMonth(today);
+                    setStartDate(startOfMonth);
+                    setEndDate(today);
+                  }}
+                  className="px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md transition-colors"
+                >
+                  Este mes
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 w-full xs:w-auto">
-              <label htmlFor="endDate" className="text-sm font-medium whitespace-nowrap">Hasta:</label>
-              <input 
-                type="date" 
-                id="endDate"
-                name="endDate"
-                value={formatDateForInput(endDate)}
-                onChange={(e) => setEndDate(new Date(e.target.value + 'T23:59:59'))} // Ensure time is end of day
-                className="border border-gray-300 rounded-md p-2 text-sm dark:bg-gray-700 dark:border-gray-600 flex-1 xs:flex-none input-responsive"
-              />
-            </div>
-          </div>
-        )}
-        {!activeCompanyId ? (
-          <Button
-            onClick={() => router.push('/dashboard/empresas')}
-            className="w-full sm:w-auto btn-responsive"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" /> 
-            Crear Empresa
-          </Button>
-        ) : (
-          <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              onClick={() => router.push('/dashboard/empresas')}
-              className="btn-responsive"
-            >
-              <Building className="mr-2 h-4 w-4" /> 
-              <span className="hidden xs:inline">Gestionar </span>Empresas
-            </Button>
-            <Button
-              onClick={() => router.push('/dashboard/cuentas/nueva')}
-              className="btn-responsive"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> 
-              Nueva Cuenta
-            </Button>
           </div>
         )}
       </div>
-      
+
+      {/* Action buttons section */}
+      {activeCompanyId ? (
+        <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/dashboard/empresas')}
+            className="btn-responsive"
+          >
+            <Building className="mr-2 h-4 w-4" /> 
+            <span className="hidden xs:inline">Gestionar </span>Empresas
+          </Button>
+          <Button
+            onClick={() => router.push('/dashboard/cuentas/nueva')}
+            className="btn-responsive"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> 
+            Nueva Cuenta
+          </Button>
+        </div>
+      ) : (
+        <Button
+          onClick={() => router.push('/dashboard/empresas')}
+          className="w-full sm:w-auto btn-responsive"
+        >
+          <PlusCircle className="mr-2 h-4 w-4" /> 
+          Crear Empresa
+        </Button>
+      )}
+
       {!activeCompanyId && (
         <Card className="bg-gradient-to-r from-muted/70 to-muted border shadow-md animate-fade-in card-responsive">
           <CardHeader>
