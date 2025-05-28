@@ -128,55 +128,55 @@ export default function EmpresasGestionDashboardPage() {
   }
 
   return (
-    <div className="container mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Gestionar Empresas</h1>
+    <div className="container px-3 sm:px-4 mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Gestionar Empresas</h1>
         <CreateCompanyForm />
       </div>
 
       {companies.length === 0 && !isLoadingCompanies ? (
-        <Card className="text-center py-12">
+        <Card className="text-center py-8 sm:py-12">
           <CardHeader>
-            <Briefcase className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-            <CardTitle className="text-2xl">No tienes empresas registradas</CardTitle>
-            <CardDescription>
+            <Briefcase className="mx-auto h-12 sm:h-16 w-12 sm:w-16 text-muted-foreground mb-3 sm:mb-4" />
+            <CardTitle className="text-xl sm:text-2xl">No tienes empresas registradas</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
               Crea tu primera empresa para empezar a gestionar tus finanzas.
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <p className="text-muted-foreground">Usa el botón "Nueva Empresa" para comenzar.</p>
+             <p className="text-sm text-muted-foreground">Usa el botón "Nueva Empresa" para comenzar.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {companies.map((company: Company) => (
             <Card key={company.id} className="flex flex-col justify-between hover:shadow-lg transition-shadow duration-200">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2">
-                  <Briefcase className="h-6 w-6 text-primary" />
-                  {company.name}
+              <CardHeader className="pb-2 sm:pb-4">
+                <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                  <span className="truncate">{company.name}</span>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs sm:text-sm">
                   {company.ownerUid === user?.uid ? "Propietario" : `Miembro (${company.members[user?.uid || ''] || 'lector'})`}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                 <Button onClick={() => handleAccessCompany(company.id)} className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Acceder a Empresa <ArrowRight className="ml-2 h-4 w-4"/>
+              <CardContent className="pb-3">
+                 <Button onClick={() => handleAccessCompany(company.id)} className="w-full mt-2 sm:mt-4 bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <span className="mr-1 sm:mr-2">Acceder</span> <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4"/>
                 </Button>
               </CardContent>
-              <CardFooter className="flex justify-end gap-2 pt-4 border-t">
-                <Button asChild variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setActiveCompanyId(company.id); /*router.push('/dashboard/configuracion');*/ }}>
-                  <Link href="/dashboard/configuracion">
-                    <Edit className="mr-2 h-3 w-3" /> Configurar
+              <CardFooter className="flex flex-wrap sm:flex-nowrap justify-end gap-2 pt-3 sm:pt-4 border-t">
+                <Button asChild variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setActiveCompanyId(company.id); }}>
+                  <Link href="/dashboard/configuracion" className="text-xs sm:text-sm">
+                    <Edit className="mr-1 sm:mr-2 h-3 w-3" /> <span className="hidden xs:inline">Configurar</span><span className="xs:hidden">Config</span>
                   </Link>
                 </Button>
                 {company.ownerUid === user?.uid && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" disabled={isDeleting === company.id} onClick={(e) => e.stopPropagation()}>
-                        {isDeleting === company.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
-                        Eliminar
+                      <Button variant="destructive" size="sm" disabled={isDeleting === company.id} onClick={(e) => e.stopPropagation()} className="text-xs sm:text-sm">
+                        {isDeleting === company.id ? <Loader2 className="mr-1 sm:mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 sm:mr-2 h-3 w-3" />}
+                        <span className="hidden xs:inline">Eliminar</span><span className="xs:hidden">Elim</span>
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent onClick={(e) => e.stopPropagation()}>
