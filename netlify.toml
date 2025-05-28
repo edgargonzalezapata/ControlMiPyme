@@ -4,7 +4,7 @@
 
 [build.environment]
   NEXT_USE_NODE_HTTP = "true"
-  NODE_VERSION = "22.x"
+  NODE_VERSION = "20.x"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
