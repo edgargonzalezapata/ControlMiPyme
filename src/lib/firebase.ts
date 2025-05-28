@@ -43,9 +43,10 @@ function getFirebaseConfig() {
   const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
   const missingFields = requiredFields.filter(field => !config[field]);
 
+  // Si faltan campos, usar la configuración predeterminada
   if (missingFields.length > 0) {
-    console.error('Firebase: Missing required configuration fields:', missingFields);
-    throw new Error(`Firebase configuration is missing required fields: ${missingFields.join(', ')}`);
+    console.warn('Firebase: Missing environment variables, using default configuration');
+    return DEFAULT_FIREBASE_CONFIG;
   }
 
   // Guardar la configuración en el objeto window para futuras referencias
