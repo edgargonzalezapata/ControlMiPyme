@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthProvider';
 import { ActiveCompanyProvider } from '@/context/ActiveCompanyProvider';
 import { ActivePeriodProvider } from '@/context/ActivePeriodProvider';
 import { ThemeProvider } from '@/context/ThemeProvider';
 import { FirebaseInitializer } from '@/components/FirebaseInitializer';
+import { ConditionalLayout } from '@/components/layout/ConditionalLayout';
 import Script from 'next/script';
 
 const geistSans = Geist({
@@ -51,12 +51,11 @@ export default function RootLayout({
             <ActiveCompanyProvider>
               <ActivePeriodProvider>
                 <ThemeProvider>
-                <div className="flex min-h-screen flex-col">
-                  <Navbar />
-                  <main className="flex-grow container mx-auto px-2 sm:px-4 py-4 sm:py-8">{children}</main>
-                </div>
-                <Toaster />
-              </ThemeProvider>
+                  <ConditionalLayout>
+                    {children}
+                  </ConditionalLayout>
+                  <Toaster />
+                </ThemeProvider>
               </ActivePeriodProvider>
             </ActiveCompanyProvider>
           </FirebaseInitializer>
