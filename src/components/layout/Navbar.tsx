@@ -192,19 +192,6 @@ export function Navbar() {
                         <span className="text-sm font-medium">Transacciones</span>
                       </Link>
 
-                      <Link 
-                        href="/dashboard/cartolas" 
-                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        onClick={() => {
-                          console.log('Cartolas link clicked');
-                          setIsOpen(false);
-                        }}
-                      >
-                        <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                          <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <span className="text-sm font-medium">Cargar Cartolas</span>
-                      </Link>
 
                       <Link 
                         href="/dashboard/reportes" 
@@ -285,6 +272,20 @@ export function Navbar() {
                           <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         </div>
                         <span className="text-sm font-medium">Servicios Recurrentes</span>
+                      </Link>
+
+                      <Link 
+                        href="/dashboard/cotizaciones" 
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => {
+                          console.log('Cotizaciones link clicked');
+                          setIsOpen(false);
+                        }}
+                      >
+                        <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <span className="text-sm font-medium">Cotizaciones</span>
                       </Link>
                     </div>
                   </div>

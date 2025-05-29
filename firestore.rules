@@ -108,6 +108,28 @@ service cloud.firestore {
                      getCompanyOwnerId(resource.data.empresaId) == request.auth.uid;
     }
     
+    // Cotizaciones
+    match /cotizaciones/{cotizacionId} {
+      // PERMITIR LEER: si el usuario está autenticado
+      allow read: if isAuthenticated();
+      
+      // PERMITIR CREAR: si el usuario está autenticado y es el propietario de la empresa
+      allow create: if isAuthenticated() && 
+                     request.auth.uid != null &&
+                     request.resource.data.empresaId != null &&
+                     getCompanyOwnerId(request.resource.data.empresaId) == request.auth.uid;
+                     
+      // PERMITIR ACTUALIZAR: si el usuario es propietario de la empresa de la cotización
+      allow update: if isAuthenticated() && 
+                     resource.data.empresaId != null &&
+                     getCompanyOwnerId(resource.data.empresaId) == request.auth.uid;
+                     
+      // PERMITIR BORRAR: si el usuario es propietario de la empresa de la cotización
+      allow delete: if isAuthenticated() && 
+                     resource.data.empresaId != null &&
+                     getCompanyOwnerId(resource.data.empresaId) == request.auth.uid;
+    }
+    
     // Regla para permitir a los usuarios leer cualquier documento
     // Esto hace más sencilla la depuración en desarrollo
     match /{document=**} {

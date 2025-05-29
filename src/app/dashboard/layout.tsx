@@ -209,7 +209,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const finanzasItems: NavItem[] = [
     { href: '/dashboard/cuentas', label: 'Bancos', icon: Banknote, requiresActiveCompany: true, description: 'Gestión de cuentas bancarias' },
     { href: '/dashboard/transacciones', label: 'Transacciones', icon: ArrowLeftRight, requiresActiveCompany: true, description: 'Registro de movimientos' },
-    { href: '/dashboard/cartolas', label: 'Cargar Cartolas', icon: FileText, requiresActiveCompany: true, description: 'Importar cartolas bancarias' },
     { href: '/dashboard/reportes', label: 'Reportes', icon: PieChart, requiresActiveCompany: true, isPlaceholder: true, description: 'Análisis financiero' },
   ];
 
@@ -218,6 +217,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     { href: '/dashboard/facturacion/lista', label: 'Facturas Emitidas', icon: FileText, requiresActiveCompany: true, description: 'Ver y gestionar facturas emitidas' },
     { href: '/dashboard/facturacion/recibidas', label: 'Facturas Recibidas', icon: FileText, requiresActiveCompany: true, description: 'Ver y gestionar facturas recibidas' },
     { href: '/dashboard/servicios-recurrentes', label: 'Servicios Recurrentes', icon: Calendar, requiresActiveCompany: true, description: 'Facturación mensual automática' },
+    { href: '/dashboard/cotizaciones', label: 'Cotizaciones', icon: FileText, requiresActiveCompany: true, description: 'Emitir cotizaciones de servicios' },
   ];
 
   const baseNavItems: NavItem[] = [
